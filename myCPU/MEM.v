@@ -1,11 +1,4 @@
-`define WIDTH_BR_BUS       34
-`define WIDTH_FS_TO_DS_BUS 64
-`define WIDTH_DS_TO_ES_BUS 150
-`define WIDTH_ES_TO_MS_BUS 71
-`define WIDTH_MS_TO_WS_BUS 70
-`define WIDTH_WS_TO_DS_BUS 38
-`define WIDTH_ES_TO_DS_BUS 39
-`define WIDTH_MS_TO_DS_BUS 38
+`include "mycpu_head.h"
 
 module stage4_MEM(
     input clk,
@@ -68,7 +61,7 @@ assign ms_to_ws_bus[69:38] = ms_final_result;
 /*-------------------------------------------------------*/
 
 /*--------------------------valid------------------------*/
-reg ms_valid;    //valid信号表示这一级流水缓存是否有�?????
+reg ms_valid;    //valid信号表示这一级流水缓存是否有�?????
 
 wire ms_ready_go;
 assign ms_ready_go = 1'b1;

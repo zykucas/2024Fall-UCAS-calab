@@ -1,11 +1,4 @@
-`define WIDTH_BR_BUS       34
-`define WIDTH_FS_TO_DS_BUS 64
-`define WIDTH_DS_TO_ES_BUS 150
-`define WIDTH_ES_TO_MS_BUS 71
-`define WIDTH_MS_TO_WS_BUS 70
-`define WIDTH_WS_TO_DS_BUS 38
-`define WIDTH_ES_TO_DS_BUS 39
-`define WIDTH_MS_TO_DS_BUS 38
+`include "mycpu_head.h"
 
 module stage2_ID(
     input clk,
@@ -95,6 +88,10 @@ wire        inst_sll_w;
 wire        inst_srl_w;
 wire        inst_sra_w;
 wire        inst_pcaddu12i;
+wire        inst_mul_w;
+wire        inst_mulh_w;
+wire        inst_mulh_wu;
+
 
 wire        need_ui5;
 wire        need_si12;
@@ -186,16 +183,45 @@ assign inst_bne    = op_31_26_d[6'h17];
 //lui2i_w: rd, si20
 //rd = {si20, 12'b0}
 assign inst_lu12i_w= op_31_26_d[6'h05] & ~inst[25];
-
+//slti rd, rj, si12
+//rd = (signed(rj) < SignExtend(si12, 32)) ? 1 : 0
 assign inst_slti   = op_31_26_d[6'h00] & op_25_22_d[4'h8];
+//sltiu rd, rj, si12
+//rd = (unsigned(rj) < SignExtend(si12, 32)) ? 1 : 0
 assign inst_sltiu  = op_31_26_d[6'h00] & op_25_22_d[4'h9];
+//andi rd, rj, ui12
+//GR[rd] = GR[rj] & ZeroExtend(ui12, 32)
 assign inst_andi   = op_31_26_d[6'h00] & op_25_22_d[4'hd];
+//ori rd, rj, ui12
+//GR[rd] = GR[rj] | ZeroExtend(ui12, 32)
 assign inst_ori    = op_31_26_d[6'h00] & op_25_22_d[4'he];
+//xori rd, rj, ui12
+//GR[rd] = GR[rj] ^ ZeroExtend(ui12, 32)
 assign inst_xori   = op_31_26_d[6'h00] & op_25_22_d[4'hf];
+//sll.w rd, rj, rk
+//GR[rd] = SLL(GR[rj], GR[rk][4:0])
 assign inst_sll_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h0e];
+//srl.w rd, rj, rk
+//GR[rd] = SRL(GR[rj], GR[rk][4:0])
 assign inst_srl_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h0f];
+//sra.w rd, rj, rk
+//GR[rd] = SRA(GR[rj], GR[rk][4:0])
 assign inst_sra_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h10];
+//pcaddu12i: rd, si20
+//GR[rd] = PC + SignExtend({si20, 12'b0}, 32)
 assign inst_pcaddu12i = op_31_26_d[6'h07] & ~inst[25];
+//mul.w rd, rj, rk
+//product = signed(GR[rj]) * signed(GR[rk])
+//GR[rd] = product[31:0]
+assign inst_mul_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h18];
+//mulh.w rd, rj, rk
+//product = signed(GR[rj]) * signed(GR[rk])
+//GR[rd] = product[63:32]
+assign inst_mulh_w = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h19];
+//mulh.wu rd, rj, rk
+//product = unsigned(GR[rj]) * unsigned(GR[rk])
+//GR[rd] = product[63:32]
+assign inst_mulh_wu= op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h1a];
 
 assign need_ui5   =  inst_slli_w | inst_srli_w | inst_srai_w;  
 assign need_si12  =  inst_addi_w | inst_ld_w | inst_st_w | inst_slti | inst_sltiu;   
@@ -279,6 +305,10 @@ assign alu_op[ 9] = inst_srli_w | inst_srl_w;
 assign alu_op[10] = inst_srai_w | inst_sra_w;
 assign alu_op[11] = inst_lu12i_w;
 
+assign mul_op[0] = inst_mul_w;
+assign mul_op[1] = inst_mulh_w;
+assign mul_op[2] = inst_mulh_wu;
+
 assign src1_is_pc    = inst_jirl | inst_bl | inst_pcaddu12i; //checked
 
 assign src2_is_imm   = inst_slli_w |    //checked
@@ -310,6 +340,7 @@ assign ds_to_es_bus[146:135] = alu_op;
 assign ds_to_es_bus[147:147] = src1_is_pc;  
 assign ds_to_es_bus[148:148] = src2_is_imm;  
 assign ds_to_es_bus[149:149] = res_from_mem; 
+assign ds_to_es_bus[152:150] = mul_op;
 
 reg ds_valid;   
 
@@ -318,7 +349,8 @@ wire if_read_addr2;
 
 assign if_read_addr1 = ~inst_b && ~inst_bl && ~inst_lu12i_w && ~inst_pcaddu12i;
 assign if_read_addr2 = inst_beq || inst_bne || inst_xor || inst_or || inst_and || inst_nor ||
-                       inst_sltu || inst_slt || inst_sub_w || inst_add_w || inst_st_w || inst_sll_w || inst_srl_w || inst_sra_w;
+                       inst_sltu || inst_slt || inst_sub_w || inst_add_w || inst_st_w || inst_sll_w || inst_srl_w || inst_sra_w ||
+                       inst_mul_w || inst_mulh_w || inst_mulh_wu;
 
 wire Need_Block;    //ex_crush & es_res_from_mem
 

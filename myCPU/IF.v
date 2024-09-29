@@ -1,11 +1,4 @@
-`define WIDTH_BR_BUS       33
-`define WIDTH_FS_TO_DS_BUS 64
-`define WIDTH_DS_TO_ES_BUS 150
-`define WIDTH_ES_TO_MS_BUS 71
-`define WIDTH_MS_TO_WS_BUS 70
-`define WIDTH_WS_TO_DS_BUS 38
-`define WIDTH_ES_TO_DS_BUS 6
-`define WIDTH_MS_TO_DS_BUS 6
+`include "mycpu_head.h"
 
 module stage1_IF(
     input clk,
@@ -25,13 +18,13 @@ module stage1_IF(
 
 /*--------------------------------valid-----------------------------*/
 
-reg fs_valid;    //validÐÅºÅ±íÊ¾ÕâÒ»¼¶Á÷Ë®»º´æÊÇ·ñÓÐ
+reg fs_valid;    //validï¿½ÅºÅ±ï¿½Ê¾ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½Ë®ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½
 
-//¶Ôfs_validÀ´Ëµ£¬Ö»ÒªÈ¡Ïûreset£¬Ïàµ±È¥Ç°Ò»½×¶Î¶ÔËü·¢À´µÄvalidÐÅºÅ
+//ï¿½ï¿½fs_validï¿½ï¿½Ëµï¿½ï¿½Ö»ÒªÈ¡ï¿½ï¿½resetï¿½ï¿½ï¿½àµ±È¥Ç°Ò»ï¿½×¶Î¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½validï¿½Åºï¿½
 wire pre_if_to_fs_valid;
 assign pre_if_to_fs_valid = !reset;
 
-//fs_validÀ­¸ßµÄÁí¸öÌõ¼þÊÇÏÂÒ»½×¶ÎµÄallow_inÐÅºÅds_allow_in
+//fs_validï¿½ï¿½ï¿½ßµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½×¶Îµï¿½allow_inï¿½Åºï¿½ds_allow_in
 wire fs_ready_go;
 
 always @(posedge clk)
@@ -46,24 +39,24 @@ always @(posedge clk)
 
     end
 
-//½«output-fs_to_ds_validÓëreg fs_validÁ¬½Ó
-//¿¼ÂÇµ½ºóÐò¿ÉÄÜÒ»¸öclkÍê³É²»ÁËFETCH£¬ÏÈÔöÉèfs_readyÐÅºÅ²¢Ê¼ÖÕ
+//ï¿½ï¿½output-fs_to_ds_validï¿½ï¿½reg fs_validï¿½ï¿½ï¿½ï¿½
+//ï¿½ï¿½ï¿½Çµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½clkï¿½ï¿½É²ï¿½ï¿½ï¿½FETCHï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½fs_readyï¿½ÅºÅ²ï¿½Ê¼ï¿½ï¿½
 assign fs_ready_go = 1'b1;
 wire fs_allow_in;
 assign fs_allow_in = !fs_valid || fs_ready_go && ds_allow_in;
 assign fs_to_ds_valid = fs_valid && fs_ready_go;
 
-wire [31:0] br_target;  //Ìø×ªµØÖ·
-wire br_taken;          //ÊÇ·ñÌø×ª
+wire [31:0] br_target;  //ï¿½ï¿½×ªï¿½ï¿½Ö·
+wire br_taken;          //ï¿½Ç·ï¿½ï¿½ï¿½×ª
 wire br_taken_cancel;
-//br_takenºÍbr_targetÀ´×Ôbr_bus
+//br_takenï¿½ï¿½br_targetï¿½ï¿½ï¿½ï¿½br_bus
 assign {br_taken_cancel,br_taken,br_target} = br_bus;
 
 reg [31:0] fetch_pc; 
 
-wire [31:0] seq_pc;     //Ë³ÐòÈ¡Ö·
+wire [31:0] seq_pc;     //Ë³ï¿½ï¿½È¡Ö·
 assign seq_pc = fetch_pc + 4;
-wire [31:0] next_pc;    //nextpcÀ´×Ôseq»òbr,ÊÇ???ÖÁramµÄpc???????
+wire [31:0] next_pc;    //nextpcï¿½ï¿½ï¿½ï¿½seqï¿½ï¿½br,ï¿½ï¿½???ï¿½ï¿½ramï¿½ï¿½pc???????
 assign next_pc = br_taken? br_target : seq_pc;
    
 always @(posedge clk)
@@ -75,7 +68,7 @@ always @(posedge clk)
     end
 
 assign inst_sram_en = pre_if_to_fs_valid && ds_allow_in;
-assign inst_sram_wen = 4'b0;    //fetch½×¶Î²»Ð´
+assign inst_sram_wen = 4'b0;    //fetchï¿½×¶Î²ï¿½Ð´
 assign inst_sram_addr = next_pc;
 assign inst_sram_wdata = 32'b0;
 
