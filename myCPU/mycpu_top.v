@@ -1,6 +1,6 @@
 `define WIDTH_BR_BUS       34
 `define WIDTH_FS_TO_DS_BUS 64
-`define WIDTH_DS_TO_ES_BUS 150
+`define WIDTH_DS_TO_ES_BUS 156
 `define WIDTH_ES_TO_MS_BUS 71
 `define WIDTH_MS_TO_WS_BUS 70
 `define WIDTH_WS_TO_DS_BUS 38
@@ -107,7 +107,7 @@ module stage2_ID(
     input [`WIDTH_FS_TO_DS_BUS-1:0] fs_to_ds_bus,
     output [`WIDTH_DS_TO_ES_BUS-1:0] ds_to_es_bus,
 
-    //ws_to_ds_bus 承载 寄存器的写信号，写地????????与写数据
+    //ws_to_ds_bus 承载 寄存器的写信号，写地址与写数据
     //从wback阶段 送来 decode阶段 
     input [`WIDTH_WS_TO_DS_BUS-1:0] ws_to_ds_bus;
     //br_bus 承载 br_taken ???????? br_target 
