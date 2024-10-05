@@ -1,4 +1,11 @@
-`include "mycpu_head.h"
+`define WIDTH_BR_BUS       34
+`define WIDTH_FS_TO_DS_BUS 64
+`define WIDTH_DS_TO_ES_BUS 164
+`define WIDTH_ES_TO_MS_BUS 78
+`define WIDTH_MS_TO_WS_BUS 70
+`define WIDTH_WS_TO_DS_BUS 38
+`define WIDTH_ES_TO_DS_BUS 39
+`define WIDTH_MS_TO_DS_BUS 38
 
 module stage1_IF(
     input clk,
@@ -18,13 +25,12 @@ module stage1_IF(
 
 /*--------------------------------valid-----------------------------*/
 
-reg fs_valid;    //valid�źű�ʾ��һ����ˮ�����Ƿ���
+reg fs_valid;
 
-//��fs_valid��˵��ֻҪȡ��reset���൱ȥǰһ�׶ζ���������valid�ź�
+//对fs_valid来说，只要取消reset，相当于去前一阶段对它发来的valid信号
 wire pre_if_to_fs_valid;
 assign pre_if_to_fs_valid = !reset;
 
-//fs_valid���ߵ�������������һ�׶ε�allow_in�ź�ds_allow_in
 wire fs_ready_go;
 
 always @(posedge clk)
@@ -39,24 +45,24 @@ always @(posedge clk)
 
     end
 
-//��output-fs_to_ds_valid��reg fs_valid����
-//���ǵ��������һ��clk��ɲ���FETCH��������fs_ready�źŲ�ʼ��
+//将output fs_to_ds_valid与reg fs_valid链接
+//考虑到后续可能一个clk完成不了fetch，先增设fs_ready信号，并始终拉高ready_go
 assign fs_ready_go = 1'b1;
 wire fs_allow_in;
 assign fs_allow_in = !fs_valid || fs_ready_go && ds_allow_in;
 assign fs_to_ds_valid = fs_valid && fs_ready_go;
 
-wire [31:0] br_target;  //��ת��ַ
-wire br_taken;          //�Ƿ���ת
+wire [31:0] br_target;  //跳转地址
+wire br_taken;          //是否跳转
 wire br_taken_cancel;
-//br_taken��br_target����br_bus
+//br_taken和br_target来自br_bus
 assign {br_taken_cancel,br_taken,br_target} = br_bus;
 
 reg [31:0] fetch_pc; 
 
-wire [31:0] seq_pc;     //˳��ȡַ
+wire [31:0] seq_pc;     //顺序取地址
 assign seq_pc = fetch_pc + 4;
-wire [31:0] next_pc;    //nextpc����seq��br,��???��ram��pc???????
+wire [31:0] next_pc;    //nextpc来自seq或br
 assign next_pc = br_taken? br_target : seq_pc;
    
 always @(posedge clk)
@@ -68,7 +74,7 @@ always @(posedge clk)
     end
 
 assign inst_sram_en = pre_if_to_fs_valid && ds_allow_in;
-assign inst_sram_wen = 4'b0;    //fetch�׶β�д
+assign inst_sram_wen = 4'b0;    //fetch阶段不写
 assign inst_sram_addr = next_pc;
 assign inst_sram_wdata = 32'b0;
 
