@@ -189,8 +189,25 @@
         \par
         2.st.b的四种偏移00、01、10、11分别对应mem_we为0001、0010、0100、1000。st.h的两种偏移00、10分别对应mem_we为0011、1100。如此对mem_we进行赋值。32位的wdata将8位数据重复4次，16位数据重复2次填满即可
         \par
-        3.在EX中对未对齐的地址进行对其操作，
-
+        3.在EX中对未对齐的地址进行对齐操作，定义了一个写使能信号 w_strb 和真实写数据 real_wdata，根据 st_op 的不同情况进行选择
+        \begin{lstlisting}[language=Verilog]
+            wire [3:0] w_strb;  //depend on st_op
+            assign w_strb =  es_st_op[0] ? 4'b1111 :
+                             es_st_op[1] ? (es_unaligned_addr==2'b00 ? 4'b0001 : es_unaligned_addr==2'b01 ? 4'b0010 : 
+                                            es_unaligned_addr==2'b10 ? 4'b0100 : 4'b1000) : 
+                             es_st_op[2] ? (es_unaligned_addr[1] ? 4'b1100 : 4'b0011) : 4'b0000;
+            wire [31:0] real_wdata;
+            assign real_wdata = es_st_op[0] ? es_rkd_value :
+                                es_st_op[1] ? {4{es_rkd_value[7:0]}} :
+                                es_st_op[2] ? {2{es_rkd_value[15:0]}} : 32'b0;
+        \end{lstlisting}
+        4.对SRAM相关信号进行修改
+        \begin{lstlisting}[language=Verilog]
+            assign data_sram_en    = 1'b1;   
+            assign data_sram_wen   = (es_mem_we && es_valid) ? w_strb : 4'b0000;
+            assign data_sram_addr  = (es_mul_op != 0) ? {es_mul_result[31:2],2'b00} : {es_alu_result[31:2],2'b00};
+            assign data_sram_wdata = real_wdata;   
+        \end{lstlisting}
 
 
 
