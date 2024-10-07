@@ -31,6 +31,8 @@ wire ms_gr_we;
 wire ms_res_from_mem;
 wire [4:0] ms_dest;
 wire [31:0] ms_alu_result;
+wire [1:0]  unaligned_addr;
+wire [2:0]  ms_ld_op;
 
 reg [`WIDTH_ES_TO_MS_BUS-1:0] es_to_ms_bus_reg;
 always @(posedge clk)
@@ -43,14 +45,23 @@ always @(posedge clk)
             es_to_ms_bus_reg <= 0;
     end 
 
-assign {ms_alu_result, ms_dest, ms_res_from_mem,
+assign {ms_ld_op,unaligned_addr,ms_alu_result, ms_dest, ms_res_from_mem,
         ms_gr_we, ms_pc} = es_to_ms_bus_reg;
 
 /*-------------------------------------------------------*/
 
 /*----------------------发�?�ms_to_ws_bus-----------------*/
 wire [31:0] mem_result;
-assign mem_result   = data_sram_rdata;
+wire [31:0] load_b_res,load_h_res;
+assign load_b_res   = (unaligned_addr == 2'h0) ? {{ms_ld_op[2]?{24{data_sram_rdata[7]}}:24'b0} ,data_sram_rdata[7:0]}
+        :(unaligned_addr == 2'h1) ? {{ms_ld_op[2]?{24{data_sram_rdata[15]}}:24'b0},data_sram_rdata[15:8]}
+        :(unaligned_addr == 2'h2) ? {{ms_ld_op[2]?{24{data_sram_rdata[23]}}:24'b0},data_sram_rdata[23:16]}
+        :(unaligned_addr == 2'h3) ? {{ms_ld_op[2]?{24{data_sram_rdata[31]}}:24'b0},data_sram_rdata[31:24]} : 32'b0;
+assign load_h_res   = (unaligned_addr[1]) ? {{ms_ld_op[2]?{16{data_sram_rdata[31]}}:16'b0} ,data_sram_rdata[31:16]}
+        :{{ms_ld_op[2]?{16{data_sram_rdata[15]}}:16'b0} ,data_sram_rdata[15:0]};
+assign mem_result   = ms_ld_op[0] ? load_b_res 
+        : ms_ld_op[1] ? load_h_res
+        : data_sram_rdata;
 wire [31:0] ms_final_result;
 assign ms_final_result = ms_res_from_mem? mem_result : ms_alu_result;
 
@@ -61,7 +72,7 @@ assign ms_to_ws_bus[69:38] = ms_final_result;
 /*-------------------------------------------------------*/
 
 /*--------------------------valid------------------------*/
-reg ms_valid;    //valid信号表示这一级流水缓存是否有�?????
+reg ms_valid;    //valid信号表示这一级流水缓存是否有�??????
 
 wire ms_ready_go;
 assign ms_ready_go = 1'b1;

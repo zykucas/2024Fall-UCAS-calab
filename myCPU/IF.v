@@ -26,6 +26,10 @@ assign pre_if_to_fs_valid = !reset;
 
 //fs_valid���ߵ�������������һ�׶ε�allow_in�ź�ds_allow_in
 wire fs_ready_go;
+wire fs_allow_in;
+
+wire br_taken;          //�Ƿ���ת
+wire br_taken_cancel;
 
 always @(posedge clk)
     begin
@@ -33,22 +37,17 @@ always @(posedge clk)
             fs_valid <= 1'b0;
         else if(fs_allow_in)
             fs_valid <= pre_if_to_fs_valid;
-
         else if(br_taken_cancel)
             fs_valid <= 1'b0;
-
     end
 
 //��output-fs_to_ds_valid��reg fs_valid����
 //���ǵ��������һ��clk��ɲ���FETCH��������fs_ready�źŲ�ʼ��
 assign fs_ready_go = 1'b1;
-wire fs_allow_in;
 assign fs_allow_in = !fs_valid || fs_ready_go && ds_allow_in;
 assign fs_to_ds_valid = fs_valid && fs_ready_go;
 
 wire [31:0] br_target;  //��ת��ַ
-wire br_taken;          //�Ƿ���ת
-wire br_taken_cancel;
 //br_taken��br_target����br_bus
 assign {br_taken_cancel,br_taken,br_target} = br_bus;
 

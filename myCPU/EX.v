@@ -44,6 +44,7 @@ wire [2:0]  es_mul_op;
 wire [2:0]  es_div_op;
 
 wire [2:0]  es_st_op;
+wire [2:0]  es_ld_op;
 
 wire dividend_ready,dividend_u_ready;
 wire dividend_valid,dividend_u_valid;
@@ -114,8 +115,8 @@ assign  dividend_valid = current_state == DIV_WAIT;
 assign  divisor_valid  = current_state == DIV_WAIT;
 assign  dividend_u_valid = current_state == DIVU_WAIT ;
 assign  divisor_u_valid  = current_state == DIVU_WAIT;
-//exp11,可能需要在最前面加es_ld_op
-assign {es_st_op,es_div_op,es_mul_op,es_res_from_mem, es_src2_is_imm, es_src1_is_pc,
+//exp11,可能�?要在�?前面加es_ld_op
+assign {es_ld_op,es_st_op,es_div_op,es_mul_op,es_res_from_mem, es_src2_is_imm, es_src1_is_pc,
         es_alu_op, es_mem_we, es_gr_we, es_dest, es_imm,
         es_rkd_value, es_rj_value, es_pc} = ds_to_es_bus_reg;
 assign inst_div = es_div_op[0];
@@ -139,7 +140,7 @@ assign es_to_ms_bus[33:33] = es_res_from_mem;
 assign es_to_ms_bus[38:34] = es_dest;
 assign es_to_ms_bus[70:39] = es_cal_result;
 assign es_to_ms_bus[72:71] = es_unaligned_addr;
-/*assign es_to_ms_bus xxx = es_ld_op; ???*/
+assign es_to_ms_bus[75:73] = es_ld_op; 
 
 wire [31:0] cal_src1;
 wire [31:0] cal_src2;

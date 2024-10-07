@@ -281,9 +281,38 @@ assign inst_st_b = op_31_26_d[6'h0a] & op_25_22_d[4'h4];
 */
 assign inst_st_h = op_31_26_d[6'h0a] & op_25_22_d[4'h5];
 
+//ld.b rd, rj, si12
+//vaddr = GR[rj] + SignExtend(si12, 32)
+//AddressComplianceCheck(vaddr)
+//paddr = AddressTranslation(vaddr)
+//byte = MemoryLoad(paddr, BYTE)
+//GR[rd] = SignExtend(byte, 32)
+assign inst_ld_b = op_31_26_d[6'h0a] & op_25_22_d[4'h0];
+//ld.h rd, rj, si12
+//vaddr = GR[rj] + SignExtend(si12, 32)
+//AddressComplianceCheck(vaddr)
+//paddr = AddressTranslation(vaddr)
+//halfword = MemoryLoad(paddr, HALFWORD)
+//GR[rd] = SignExtend(halfword, 32)
+assign inst_ld_h = op_31_26_d[6'h0a] & op_25_22_d[4'h1];
+//ld.bu rd, rj, si12
+//vaddr = GR[rj] + SignExtend(si12, 32)
+//AddressComplianceCheck(vaddr)
+//paddr = AddressTranslation(vaddr)
+//byte = MemoryLoad(paddr, BYTE)
+//GR[rd] = ZeroExtend(byte, 32)
+assign inst_ld_bu = op_31_26_d[6'h0a] & op_25_22_d[4'h8];
+//ld.hu rd, rj, si12
+//vaddr = GR[rj] + SignExtend(si12, 32)
+//AddressComplianceCheck(vaddr)
+//paddr = AddressTranslation(vaddr)
+//halfword = MemoryLoad(paddr, HALFWORD)
+//GR[rd] = ZeroExtend(halfword, 32)
+assign inst_ld_hu = op_31_26_d[6'h0a] & op_25_22_d[4'h9];
 
 assign need_ui5   =  inst_slli_w | inst_srli_w | inst_srai_w;  
-assign need_si12  =  inst_addi_w | inst_ld_w | inst_st_w | inst_slti | inst_sltiu | inst_st_b | inst_st_h ;   
+assign need_si12  =  inst_addi_w | inst_ld_w | inst_st_w | inst_slti | inst_sltiu | inst_st_b | inst_st_h
+                | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu;   
 assign need_si16  =  inst_jirl | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu;       
 assign need_si20  =  inst_lu12i_w | inst_pcaddu12i;          
 assign need_si26  =  inst_b | inst_bl;    
@@ -338,6 +367,7 @@ wire [31:0] es_wdata;
 wire ms_we;
 wire [4:0] ms_dest;
 wire [31:0] ms_wdata;
+reg ds_valid;  
 
 assign {es_we,es_dest,es_res_from_mem,es_wdata} = es_to_ds_bus;
 assign {ms_we,ms_dest,ms_wdata} = ms_to_ds_bus;
@@ -356,6 +386,9 @@ assign br_target = (inst_beq || inst_bne || inst_bl || inst_b || inst_blt
 
 assign br_bus = {br_taken_cancel,br_taken,br_target};           
 
+//forward deliver
+wire [31:0] forward_rdata1;
+wire [31:0] forward_rdata2;
 assign rj_value  = forward_rdata1;   
 assign rkd_value = forward_rdata2;   
 assign imm = src2_is_4 ? 32'h4                      :   
@@ -372,7 +405,8 @@ assign mem_we        = inst_st_w | inst_st_b | inst_st_h;
 
 assign alu_op[ 0] = inst_add_w | inst_addi_w | inst_ld_w | inst_st_w
                     | inst_jirl | inst_bl | inst_pcaddu12i
-                    | inst_st_b | inst_st_h;
+                    | inst_st_b | inst_st_h
+                    | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu;
 assign alu_op[ 1] = inst_sub_w;
 assign alu_op[ 2] = inst_slt | inst_slti;
 assign alu_op[ 3] = inst_sltu | inst_sltiu;
@@ -411,9 +445,10 @@ assign src2_is_imm   = inst_slli_w |    //checked
                        inst_ori    |
                        inst_xori   |
                        inst_st_b   |
-                       inst_st_h;    
+                       inst_st_h   |
+                       inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu;    
 
-assign res_from_mem  = inst_ld_w;
+assign res_from_mem  = inst_ld_w | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu;
 
 wire [2:0] st_op;
 /* st_op = (one hot)
@@ -425,6 +460,10 @@ assign st_op[0] = inst_st_w;
 assign st_op[1] = inst_st_b;
 assign st_op[2] = inst_st_h;
 
+wire [2:0]  ld_op;
+assign ld_op[0] = inst_ld_b | inst_ld_bu;//load byte
+assign ld_op[1] = inst_ld_h | inst_ld_hu;//load half word
+assign ld_op[2] = inst_ld_h | inst_ld_b;//is signed
 
 assign ds_to_es_bus[31:   0] = ds_pc;     
 assign ds_to_es_bus[63:  32] = rj_value; 
@@ -440,9 +479,8 @@ assign ds_to_es_bus[149:149] = res_from_mem;
 assign ds_to_es_bus[152:150] = mul_op;
 assign ds_to_es_bus[155:153] = div_op;
 assign ds_to_es_bus[158:156] = st_op;
-//assign ds_to_es_bus xxx = ld_op;
-
-reg ds_valid;   
+assign ds_to_es_bus[161:159] = ld_op;
+ 
 
 wire if_read_addr1;  
 wire if_read_addr2;   
@@ -457,10 +495,10 @@ assign if_read_addr2 = inst_beq || inst_bne || inst_xor || inst_or || inst_and |
 
 wire Need_Block;    //ex_crush & es_res_from_mem
 
-assign Need_Block = (ex_crush1 || ex_crush2) && es_res_from_mem;
-
 wire ex_crush1;
 wire ex_crush2;
+assign Need_Block = (ex_crush1 || ex_crush2) && es_res_from_mem;
+
 assign ex_crush1 = (es_we && es_dest!=0) && (if_read_addr1 && rf_raddr1==es_dest);
 assign ex_crush2 = (es_we && es_dest!=0) && (if_read_addr2 && rf_raddr2==es_dest);
 
@@ -474,9 +512,6 @@ wire wb_crush2;
 assign wb_crush1 = (rf_we && rf_waddr!=0) && (if_read_addr1 && rf_raddr1==rf_waddr);
 assign wb_crush2 = (rf_we && rf_waddr!=0) && (if_read_addr2 && rf_raddr2==rf_waddr);
 
-//forward deliver
-wire [31:0] forward_rdata1;
-wire [31:0] forward_rdata2;
 assign forward_rdata1 = ex_crush1? es_wdata : mem_crush1? ms_wdata : wb_crush1? rf_wdata : rf_rdata1;
 assign forward_rdata2 = ex_crush2? es_wdata : mem_crush2? ms_wdata : wb_crush2? rf_wdata : rf_rdata2;
 
