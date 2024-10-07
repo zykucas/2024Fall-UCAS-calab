@@ -114,8 +114,8 @@ assign  dividend_valid = current_state == DIV_WAIT;
 assign  divisor_valid  = current_state == DIV_WAIT;
 assign  dividend_u_valid = current_state == DIVU_WAIT ;
 assign  divisor_u_valid  = current_state == DIVU_WAIT;
-
-assign {es_div_op,es_mul_op,es_res_from_mem, es_src2_is_imm, es_src1_is_pc,
+//exp11,可能需要在最前面加es_ld_op
+assign {es_st_op,es_div_op,es_mul_op,es_res_from_mem, es_src2_is_imm, es_src1_is_pc,
         es_alu_op, es_mem_we, es_gr_we, es_dest, es_imm,
         es_rkd_value, es_rj_value, es_pc} = ds_to_es_bus_reg;
 assign inst_div = es_div_op[0];
@@ -128,11 +128,18 @@ assign es_cal_result = es_div_op[0] ? (es_div_op[2] ? es_div_result:es_mod_resul
          ((es_mul_op != 0) ? es_mul_result : es_alu_result);
 assign es_div_result = es_div_op[1] ? es_div_signed : es_div_unsigned;
 assign es_mod_result = es_div_op[1] ? es_mod_signed : es_mod_unsigned;
+
+//task 11 add Unaligned memory access, we should deliver unaligned info
+wire [1:0] es_unaligned_addr;
+assign es_unaligned_addr = (es_mul_op != 0) ? es_mul_result[1:0] : es_alu_result[1:0];
+
 assign es_to_ms_bus[31:0] = es_pc;
 assign es_to_ms_bus[32:32] = es_gr_we;
 assign es_to_ms_bus[33:33] = es_res_from_mem;
 assign es_to_ms_bus[38:34] = es_dest;
 assign es_to_ms_bus[70:39] = es_cal_result;
+assign es_to_ms_bus[72:71] = es_unaligned_addr;
+/*assign es_to_ms_bus xxx = es_ld_op; ???*/
 
 wire [31:0] cal_src1;
 wire [31:0] cal_src2;
@@ -220,9 +227,9 @@ assign real_wdata = es_st_op[0] ? es_rkd_value :
                     es_st_op[2] ? {2{es_rkd_value[15:0]}} : 32'b0;
 
 assign data_sram_en    = 1'b1;   
-assign data_sram_wen   = (es_mem_we && es_valid) ? 4'b1111 : 4'b0000;
-assign data_sram_addr  = es_alu_result;
-assign data_sram_wdata = es_rkd_value;      
+assign data_sram_wen   = (es_mem_we && es_valid) ? w_strb : 4'b0000;
+assign data_sram_addr  = (es_mul_op != 0) ? {es_mul_result[31:2],2'b00} : {es_alu_result[31:2],2'b00};
+assign data_sram_wdata = real_wdata;      
 
 assign es_to_ds_bus = {es_gr_we,es_dest,es_res_from_mem,es_cal_result};
 

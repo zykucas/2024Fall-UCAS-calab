@@ -105,6 +105,53 @@
                         need_ui12 ? {20'b0,i12[11:0]}         :   
                         32'b0 ;
             \end{lstlisting}
+        
+        \subsubsection{添加乘法指令}
+            1.添加乘法指令首先需要增加有关指令类型的译码信号，思路同算术指令
+            \begin{lstlisting}[language=Verilog]
+                //mul.w rd, rj, rk
+                //product = signed(GR[rj]) * signed(GR[rk])
+                //GR[rd] = product[31:0]
+                assign inst_mul_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h18];
+                //mulh.w rd, rj, rk
+                //product = signed(GR[rj]) * signed(GR[rk])
+                //GR[rd] = product[63:32]
+                assign inst_mulh_w = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h19];
+                //mulh.wu rd, rj, rk
+                //product = unsigned(GR[rj]) * unsigned(GR[rk])
+                //GR[rd] = product[63:32]
+                assign inst_mulh_wu= op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h1a];
+            \end{lstlisting}
+            2.更改相关译码信号
+            \par
+            3.实现了一个乘法模块 mul，支持三种操作：普通乘法（mul.w）、高位乘法（mulh.w）和无符号高位乘法（mulh.wu）。
+            \par
+            根据输入的 mul_op 信号，模块决定如何处理输入的两个32位源操作数 mul_src1 和 mul_src2
+            \par
+            \begin{itemize}
+                \item mul_src1 和 mul_src2 在执行高位乘法时会进行符号扩展，其他情况下则进行零扩展
+                \begin{lstlisting}[language=Verilog]
+                    // when executing mulh.w instruction, the operands should be sign-extended;
+                    // otherwise, the operands should be zero-extended
+                    assign mul_src1_ext = {op_mulh_w & mul_src1[31], mul_src1};
+                    assign mul_src2_ext = {op_mulh_w & mul_src2[31], mul_src2};
+                \end{lstlisting}
+                \item 乘法结果是66位的，取低32位作为 mull_result，高32位作为 mulh_result（这里并没有挑战自己采用电路级实现乘法功能，而是直接调用IP）
+                \begin{lstlisting}[language=Verilog]
+                    // 66-bit signed multiply
+                    wire signed [65:0] mul_res_66;
+                    assign mul_res_66 = $signed(mul_src1_ext) * $signed(mul_src2_ext);
+                    wire [31:0] mull_result;
+                    wire [31:0] mulh_result;
+                    // wire [31:0] mulh_wu_result;
+                    assign mull_result = mul_res_66[31: 0];
+                    assign mulh_result = mul_res_66[63:32];
+                \end{lstlisting}
+                \item 最后通过多路选择器根据操作类型输出最终结果 mul_result
+                \begin{lstlisting}[language=Verilog]
+                    assign mul_result = ({32{op_mul_w              }} & mull_result)
+                    |                   ({32{op_mulh_w | op_mulh_wu}} & mulh_result);
+                \end{lstlisting}
 
     \subsection{exp11}
         \subsubsection{添加转移指令}
@@ -134,6 +181,18 @@
           对于无符号数的比较而言，如果没有进位则说明rj小于rd，即unsigned\_rj\_less\_rkd为1。
           对于有符号数的比较而言，如果rj的符号为1，而rd的符号位为0，则可直接说明rj小于rd，即signed\_rj\_less\_rkd为1；
           如果rj和rd的符号位相同，则需要比较rj与~rd的加法结果的符号位，如果为1则说明rj小于rd，即signed\_rj\_less\_rkd为1。
+        
+        \subsubsection{添加st指令}
+        在LoongArch指令集中st.b、st.h、st.w分别对应store byte（1字节）/halfword（2字节）/word（4字节），其中.h和.w分别要求地址2字节和4字节对齐。
+        \par
+        1.添加转移指令首先需要增加有关指令类型的译码信号,不再次举例
+        \par
+        2.st.b的四种偏移00、01、10、11分别对应mem_we为0001、0010、0100、1000。st.h的两种偏移00、10分别对应mem_we为0011、1100。如此对mem_we进行赋值。32位的wdata将8位数据重复4次，16位数据重复2次填满即可
+        \par
+        3.在EX中对未对齐的地址进行对其操作，
+
+
+
 
 \section{\sectionfont 实验过程中遇到的问题、对问题的思考过程及解决方法}
 
