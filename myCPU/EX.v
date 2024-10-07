@@ -43,6 +43,8 @@ wire        es_res_from_mem;
 wire [2:0]  es_mul_op;
 wire [2:0]  es_div_op;
 
+wire [2:0]  es_st_op;
+
 wire dividend_ready,dividend_u_ready;
 wire dividend_valid,dividend_u_valid;
 wire divisor_ready,divisor_u_ready;
@@ -199,6 +201,23 @@ always @(posedge clk)
             es_valid <= ds_to_es_valid;
     end
 
+//task 11 add Unaligned memory access, so addr[1:0] should be 2'b00
+wire [3:0] w_strb;  //depend on st_op
+/* st_op = (one hot)
+* 3'b001 st_w
+* 3'b010 st_b
+* 5'b100 st_h
+*/
+assign w_strb =  es_st_op[0] ? 4'b1111 :
+                 es_st_op[1] ? (es_unaligned_addr==2'b00 ? 4'b0001 : es_unaligned_addr==2'b01 ? 4'b0010 : 
+                                es_unaligned_addr==2'b10 ? 4'b0100 : 4'b1000) : 
+                 es_st_op[2] ? (es_unaligned_addr[1] ? 4'b1100 : 4'b0011) : 4'b0000;
+
+//consider st_b, st_h
+wire [31:0] real_wdata;
+assign real_wdata = es_st_op[0] ? es_rkd_value :
+                    es_st_op[1] ? {4{es_rkd_value[7:0]}} :
+                    es_st_op[2] ? {2{es_rkd_value[15:0]}} : 32'b0;
 
 assign data_sram_en    = 1'b1;   
 assign data_sram_wen   = (es_mem_we && es_valid) ? 4'b1111 : 4'b0000;
