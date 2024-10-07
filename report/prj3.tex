@@ -150,7 +150,113 @@
                     assign mul_result = ({32{op_mul_w              }} & mull_result)
                     |                   ({32{op_mulh_w | op_mulh_wu}} & mulh_result);
                 \end{lstlisting}
+                
+        \subsubsection{添加除法指令}
+            1.在ID级添加相关译码信号，添加3位div op信号，分别标识是否为需要div的指令，是否为signed类指令，是div指令（还是mod指令），并将此信号传输到EX级
+            \begin{lstlisting}[language=Verilog]
+            assign inst_div_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h00];
+            assign inst_div_wu = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h02];
+            assign inst_mod_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h01];
+            assign inst_mod_wu = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h03];
 
+            wire [2:0]  ld_op;
+            assign ld_op[0] = inst_ld_b | inst_ld_bu;//load byte
+            assign ld_op[1] = inst_ld_h | inst_ld_hu;//load half word
+            assign ld_op[2] = inst_ld_h | inst_ld_b;//is signed
+            
+            assign ds_to_es_bus[155:153] = div_op;
+            \end{lstlisting}
+            \par
+            2.根据指令要求修改寄存器相关信号，这部分跟alu相关计算指令逻辑类似，不在赘述
+            \par
+            3.我选择直接调用Xilinx IP来实现除法运算部件。IP设置跟讲义中所描述的一致，需要注意我例化了两个IP，分别用来计算符号数除法和无符号数除法，对应设置中operand sign的不同选项。
+            \begin{lstlisting}[language=Verilog]
+                div_signed u_div_w(
+                        .aclk(clk),
+                        .s_axis_dividend_tdata(es_rj_value),
+                        .s_axis_dividend_tready(dividend_ready),
+                        .s_axis_dividend_tvalid(dividend_valid),
+                        .s_axis_divisor_tdata(es_rkd_value),
+                        .s_axis_divisor_tready(divisor_ready),
+                        .s_axis_divisor_tvalid(divisor_valid),
+                        .m_axis_dout_tdata(div_out),
+                        .m_axis_dout_tvalid(out_valid)
+                    );
+                assign {es_div_signed,es_mod_signed} = div_out;
+                
+                div_unsigned u_div_wu(
+                        .aclk(clk),
+                        .s_axis_dividend_tdata(es_rj_value),
+                        .s_axis_dividend_tready(dividend_u_ready),
+                        .s_axis_dividend_tvalid(dividend_u_valid),
+                        .s_axis_divisor_tdata(es_rkd_value),
+                        .s_axis_divisor_tready(divisor_u_ready),
+                        .s_axis_divisor_tvalid(divisor_u_valid),
+                        .m_axis_dout_tdata(div_u_out),
+                        .m_axis_dout_tvalid(out_u_valid)
+                    );
+                assign {es_div_unsigned,es_mod_unsigned} = div_u_out;
+            \end{lstlisting}
+            由于这个IP采用的是多周期计算，输入输出都需要先握手在传输数据，我选择利用状态机实现多种状态。EXE对应其他运算以及除法的数据接收（从ID级），DIVU WAIT和DIV WAIT分别对应两种IP在等待两个输入口的ready信号，OUT WAIT和UOUT WAIT对应等待输出口的valid信号。当前状态同样会影响IP输入口的valid信号。
+            \begin{lstlisting}[language=Verilog]
+            always @(*) begin
+                case(current_state)
+                    EXE:
+                        if(es_div_op[0])begin
+                            if(es_div_op[1])
+                                next_state = DIV_WAIT;
+                            else
+                                next_state = DIVU_WAIT;
+                        end
+                        else
+                            next_state = EXE;
+                    DIV_WAIT:
+                        if(dividend_ready & divisor_ready)
+                            next_state = OUT_WAIT;
+                        else
+                            next_state = DIV_WAIT;
+                    DIVU_WAIT:
+                        if(dividend_u_ready & divisor_u_ready)
+                            next_state = UOUT_WAIT;
+                        else
+                            next_state = DIVU_WAIT;
+                    OUT_WAIT:
+                        if(out_valid)
+                            next_state = EXE;
+                        else
+                            next_state = OUT_WAIT;
+                    UOUT_WAIT:
+                        if(out_u_valid)
+                            next_state = EXE;
+                        else
+                            next_state = UOUT_WAIT;
+                    default:
+                        next_state = EXE;
+                endcase
+            end
+            
+            assign  dividend_valid = current_state == DIV_WAIT;
+            assign  divisor_valid  = current_state == DIV_WAIT;
+            assign  dividend_u_valid = current_state == DIVU_WAIT ;
+            assign  divisor_u_valid  = current_state == DIVU_WAIT;
+            \end{lstlisting}
+            此外，在计算除法指令时，需要将前面的流水级进行阻塞，表现为将allowin信号改为0，readygo信号改为0，逻辑如下：
+            \begin{lstlisting}[language=Verilog]
+            assign es_ready_go = !es_div_op[0] | (current_state==OUT_WAIT & out_valid |
+                current_state==UOUT_WAIT & out_u_valid) ;
+            assign es_allow_in = (!es_valid || es_ready_go) && ms_allow_in &&
+                (current_state == EXE | current_state==OUT_WAIT & out_valid |
+                current_state==UOUT_WAIT & out_u_valid);
+            assign es_to_ms_valid = es_valid && es_ready_go;
+            \end{lstlisting}
+            4.在传向MEM级的写入数据中加入有关div，mod指令的逻辑。
+            \begin{lstlisting}[language=Verilog]
+            assign es_cal_result = es_div_op[0] ? (es_div_op[2] ? es_div_result:es_mod_result ):
+                 ((es_mul_op != 0) ? es_mul_result : es_alu_result);
+            assign es_div_result = es_div_op[1] ? es_div_signed : es_div_unsigned;
+            assign es_mod_result = es_div_op[1] ? es_mod_signed : es_mod_unsigned;
+            \end{lstlisting}
+            
     \subsection{exp11}
         \subsubsection{添加转移指令}
           1.添加转移指令首先需要增加有关指令类型的译码信号，按照之前的格式，写明该指令的汇编代码和具体操作，以beq和bne指令为例：
@@ -207,10 +313,62 @@
             assign data_sram_wdata = real_wdata;   
         \end{lstlisting}
 
-
+        \subsubsection{添加ld指令}
+        
+        \par
+        1.添加转移指令首先需要增加有关指令类型的译码信号,与之前添加各项指令译码。
+        \begin{lstlisting}[language=Verilog]
+        assign inst_ld_b = op_31_26_d[6'h0a] & op_25_22_d[4'h0];
+        assign inst_ld_h = op_31_26_d[6'h0a] & op_25_22_d[4'h1];
+        assign inst_ld_bu = op_31_26_d[6'h0a] & op_25_22_d[4'h8];
+        assign inst_ld_hu = op_31_26_d[6'h0a] & op_25_22_d[4'h9]; 
+        \end{lstlisting}
+        此外添加3位ld op，搭配res from mem信号标志当前执行的是哪个load指令，其中0位表示load byte，1位表示load half word，2位表示为有符号扩展。
+        \begin{lstlisting}[language=Verilog]
+        wire [2:0]  ld_op;
+        assign ld_op[0] = inst_ld_b | inst_ld_bu;//load byte
+        assign ld_op[1] = inst_ld_h | inst_ld_hu;//load half word
+        assign ld_op[2] = inst_ld_h | inst_ld_b;//is signed 
+        \end{lstlisting}
+        大部分译码部分相关信号只用把原先只有ld.w信号的部分扩展成各类ld指令的信号，不再赘述。
+        \par
+        2.在EX级需要注意，由于载入的不再是按字节load，地址的后两位可能非零，这一数据需要传递到MEM级进行处理。此外，ld op也需要传递到MEM级来处理读取的数据。
+        \begin{lstlisting}[language=Verilog]
+        wire [1:0] es_unaligned_addr;
+        assign es_unaligned_addr = (es_mul_op != 0) ? es_mul_result[1:0] : es_alu_result[1:0];
+        assign es_to_ms_bus[72:71] = es_unaligned_addr;
+        assign es_to_ms_bus[75:73] = es_ld_op; 
+        \end{lstlisting}
+        \par
+        3.在MEM级根据ld op对读取的数据进行选择和扩充。
+        \begin{lstlisting}[language=Verilog]
+            wire [31:0] load_b_res,load_h_res;
+            assign load_b_res   = (unaligned_addr == 2'h0) ? {{ms_ld_op[2]?{24{data_sram_rdata[7]}}:24'b0} ,data_sram_rdata[7:0]}
+                    :(unaligned_addr == 2'h1) ? {{ms_ld_op[2]?{24{data_sram_rdata[15]}}:24'b0},data_sram_rdata[15:8]}
+                    :(unaligned_addr == 2'h2) ? {{ms_ld_op[2]?{24{data_sram_rdata[23]}}:24'b0},data_sram_rdata[23:16]}
+                    :(unaligned_addr == 2'h3) ? {{ms_ld_op[2]?{24{data_sram_rdata[31]}}:24'b0},data_sram_rdata[31:24]} : 32'b0;
+            assign load_h_res   = (unaligned_addr[1]) ? {{ms_ld_op[2]?{16{data_sram_rdata[31]}}:16'b0} ,data_sram_rdata[31:16]}
+                    :{{ms_ld_op[2]?{16{data_sram_rdata[15]}}:16'b0} ,data_sram_rdata[15:0]};
+            assign mem_result   = ms_ld_op[0] ? load_b_res 
+                    : ms_ld_op[1] ? load_h_res
+                    : data_sram_rdata;
+        \end{lstlisting}\par
 
 \section{\sectionfont 实验过程中遇到的问题、对问题的思考过程及解决方法}
-
+    \subsection{exp10}
+        1.在添加乘法指令时，需要注意传递给乘法器的数据只可能是寄存器传来的数据，所以这里传给乘法器的数据为es rj value，es rkd value，而非cal src。
+    \subsection{exp11}
+        1.在添加有关ld.b,ld.h等指令有关扩展至32位的逻辑时，发现先判断后复制的逻辑会导致只有最后一位填充，而先扩充成24位在判断选择就能正常执行，具体指令如下：
+        \begin{lstlisting}[language=Verilog]
+            assign load_h_res   = (unaligned_addr[1]) ? {{24{ms_ld_op[2]?{data_sram_rdata[31]}:0}} ,data_sram_rdata[31:16]}
+        :{{ms_ld_op[2]?{16{data_sram_rdata[15]}}:16'b0} ,data_sram_rdata[15:0]};
+        // 0x8XXX -> 0x00018XXX
+            
+            assign load_h_res   = (unaligned_addr[1]) ? {{ms_ld_op[2]?{16{data_sram_rdata[31]}}:16'b0} ,data_sram_rdata[31:16]}
+        :{{ms_ld_op[2]?{16{data_sram_rdata[15]}}:16'b0} ,data_sram_rdata[15:0]};
+        // 0x8XXX -> 0xffff8XXX
+        \end{lstlisting}
+        猜测是由于前者会把扩展后的24位整体当作一位添加在原本的16位之前，然后自动填充15位0，导致实验结果与预期不同。修改成后者便能正常运行。
 \section{\sectionfont 实验分工}
     \subsection{exp10}
         张钰堃负责添加算术指令，刘景平负责添加除法指令，付博宇负责添加乘法指令。
