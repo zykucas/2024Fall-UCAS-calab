@@ -1,8 +1,12 @@
-`include "mycpu_head.h"
+`include "mycpu_head.vh"
 
 module stage3_EX(
     input clk,
     input reset,
+
+    input ertn_flush,
+    input has_int,
+    input wb_ex,
 
     input ms_allow_in,
     output es_allow_in,
@@ -14,11 +18,14 @@ module stage3_EX(
     output [`WIDTH_ES_TO_MS_BUS-1:0] es_to_ms_bus,
     output [`WIDTH_ES_TO_DS_BUS-1:0] es_to_ds_bus,
 
+    input if_ms_has_int,
+
     output data_sram_en,
     output [3:0]data_sram_wen,
     output [31:0] data_sram_addr,
     output [31:0] data_sram_wdata
 );
+
 parameter   EXE         = 5'b00001;
 parameter   DIV_WAIT    = 5'b00010;
 parameter   DIVU_WAIT   = 5'b00100;
@@ -28,7 +35,31 @@ parameter   UOUT_WAIT   = 5'b10000;
 
 reg  [4:0]  current_state;
 reg  [4:0]  next_state;   
-
+/* data from ds_to_es_bus
+assign ds_to_es_bus[31:   0] = ds_pc;     
+assign ds_to_es_bus[63:  32] = rj_value; 
+assign ds_to_es_bus[95:  64] = rkd_value; 
+assign ds_to_es_bus[127: 96] = imm;      
+assign ds_to_es_bus[132:128] = dest;  
+assign ds_to_es_bus[133:133] = gr_we;     
+assign ds_to_es_bus[134:134] = mem_we;  
+assign ds_to_es_bus[146:135] = alu_op;   
+assign ds_to_es_bus[147:147] = src1_is_pc;  
+assign ds_to_es_bus[148:148] = src2_is_imm;  
+assign ds_to_es_bus[149:149] = res_from_mem; 
+assign ds_to_es_bus[152:150] = mul_op;
+assign ds_to_es_bus[155:153] = div_op;
+assign ds_to_es_bus[158:156] = st_op;
+assign ds_to_es_bus[161:159] = ld_op;
+//task12
+assign ds_to_es_bus[175:162] = ds_csr_num;
+assign ds_to_es_bus[207:176] = ds_csr_wmask;
+assign ds_to_es_bus[208:208] = ds_csr_write;
+assign ds_to_es_bus[209:209] = ds_ertn_flush;
+assign ds_to_es_bus[210:210] = ds_csr;
+assign ds_to_es_bus[211:211] = ds_ex_syscall;
+assign ds_to_es_bus[226:212] = ds_code;
+*/
 wire [31:0] es_pc;
 wire [31:0] es_rj_value;
 wire [31:0] es_rkd_value;
@@ -45,6 +76,14 @@ wire [2:0]  es_div_op;
 
 wire [2:0]  es_st_op;
 wire [2:0]  es_ld_op;
+//exp12
+wire [14:0] es_code;
+wire        es_ex_syscall;
+wire        es_csr;
+wire        es_ertn_flush;
+wire        es_csr_write;
+wire [31:0] es_csr_wmask;
+wire [13:0] es_csr_num;
 
 wire dividend_ready,dividend_u_ready;
 wire dividend_valid,dividend_u_valid;
@@ -53,10 +92,13 @@ wire divisor_valid,divisor_u_valid;
 wire out_valid,out_u_valid;
 wire [63:0] div_out,div_u_out;
 wire inst_div; 
+
 reg [`WIDTH_DS_TO_ES_BUS-1:0] ds_to_es_bus_reg;
 always @(posedge clk)
     begin
         if(reset)
+            ds_to_es_bus_reg <= 0;
+        else if(ertn_flush | has_int | wb_ex)
             ds_to_es_bus_reg <= 0;
         else if(ds_to_es_valid && es_allow_in)
             ds_to_es_bus_reg <= ds_to_es_bus;
@@ -115,16 +157,20 @@ assign  dividend_valid = current_state == DIV_WAIT;
 assign  divisor_valid  = current_state == DIV_WAIT;
 assign  dividend_u_valid = current_state == DIVU_WAIT ;
 assign  divisor_u_valid  = current_state == DIVU_WAIT;
-//exp11,可能�?要在�?前面加es_ld_op
-assign {es_ld_op,es_st_op,es_div_op,es_mul_op,es_res_from_mem, es_src2_is_imm, es_src1_is_pc,
+
+//exp11
+assign {es_code,es_ex_syscall,es_csr,es_ertn_flush,es_csr_write,es_csr_wmask,es_csr_num,es_ld_op,es_st_op,es_div_op,es_mul_op,es_res_from_mem, es_src2_is_imm, es_src1_is_pc,
         es_alu_op, es_mem_we, es_gr_we, es_dest, es_imm,
         es_rkd_value, es_rj_value, es_pc} = ds_to_es_bus_reg;
+
 assign inst_div = es_div_op[0];
+
 wire [31:0] es_cal_result;
 wire [31:0] es_div_result,es_div_signed,es_div_unsigned;
 wire [31:0] es_mod_result,es_mod_signed,es_mod_unsigned;
 wire [31:0] es_mul_result;
 wire [31:0] es_alu_result;
+
 assign es_cal_result = es_div_op[0] ? (es_div_op[2] ? es_div_result:es_mod_result ):
          ((es_mul_op != 0) ? es_mul_result : es_alu_result);
 assign es_div_result = es_div_op[1] ? es_div_signed : es_div_unsigned;
@@ -141,6 +187,18 @@ assign es_to_ms_bus[38:34] = es_dest;
 assign es_to_ms_bus[70:39] = es_cal_result;
 assign es_to_ms_bus[72:71] = es_unaligned_addr;
 assign es_to_ms_bus[75:73] = es_ld_op; 
+//task12
+assign es_to_ms_bus[89:76] = es_csr_num;
+assign es_to_ms_bus[121:90] = es_csr_wmask;
+assign es_to_ms_bus[122:122] = es_csr_write;
+assign es_to_ms_bus[123:123] = es_ertn_flush;
+assign es_to_ms_bus[124:124] = es_csr;
+
+wire [31:0] es_csr_wvalue;
+assign es_csr_wvalue = es_rkd_value;
+assign es_to_ms_bus[156:125] = es_csr_wvalue;
+assign es_to_ms_bus[157:157] = es_ex_syscall;
+assign es_to_ms_bus[172:158] = es_code;
 
 wire [31:0] cal_src1;
 wire [31:0] cal_src2;
@@ -228,10 +286,11 @@ assign real_wdata = es_st_op[0] ? es_rkd_value :
                     es_st_op[2] ? {2{es_rkd_value[15:0]}} : 32'b0;
 
 assign data_sram_en    = 1'b1;   
-assign data_sram_wen   = (es_mem_we && es_valid) ? w_strb : 4'b0000;
+assign data_sram_wen   = (es_mem_we && es_valid && ~has_int && ~if_ms_has_int) ? w_strb : 4'b0000;
 assign data_sram_addr  = (es_mul_op != 0) ? {es_mul_result[31:2],2'b00} : {es_alu_result[31:2],2'b00};
 assign data_sram_wdata = real_wdata;      
 
-assign es_to_ds_bus = {es_gr_we,es_dest,es_res_from_mem,es_cal_result};
+assign es_to_ds_bus = {es_gr_we,es_dest,es_res_from_mem,es_cal_result,
+                       es_csr_write, es_csr_num, es_csr};
 
 endmodule

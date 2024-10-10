@@ -1,8 +1,12 @@
-`include "mycpu_head.h"
+`include "mycpu_head.vh"
 
 module stage2_ID(
     input clk,
     input reset,
+
+    input ertn_flush,
+    input has_int,
+    input wb_ex,
 
     input es_allow_in,
     output ds_allow_in,
@@ -81,6 +85,7 @@ wire        inst_bl;
 wire        inst_beq;
 wire        inst_bne;
 wire        inst_lu12i_w;
+//exp10
 wire        inst_slti;
 wire        inst_sltiu;
 wire        inst_andi;
@@ -105,6 +110,13 @@ wire        inst_bgeu;
 
 wire        inst_st_b;
 wire        inst_st_h;
+//exp12
+wire        inst_csrrd;
+wire        inst_csrwr;
+wire        inst_csrxchg;
+wire        inst_ertn;
+wire        inst_syscall;
+
 
 
 wire        need_ui5;
@@ -197,6 +209,8 @@ assign inst_bne    = op_31_26_d[6'h17];
 //lui2i_w: rd, si20
 //rd = {si20, 12'b0}
 assign inst_lu12i_w= op_31_26_d[6'h05] & ~inst[25];
+
+//exp10
 //slti rd, rj, si12
 //rd = (signed(rj) < SignExtend(si12, 32)) ? 1 : 0
 assign inst_slti   = op_31_26_d[6'h00] & op_25_22_d[4'h8];
@@ -310,6 +324,38 @@ assign inst_ld_bu = op_31_26_d[6'h0a] & op_25_22_d[4'h8];
 //GR[rd] = ZeroExtend(halfword, 32)
 assign inst_ld_hu = op_31_26_d[6'h0a] & op_25_22_d[4'h9];
 
+
+//exp12
+/*csrrd csrrd: rd, csr_num
+* rd <-- CSR[csr_num]
+*/
+assign inst_csrrd = op_31_26_d[6'h1] & ~inst[25] & ~inst[24] & (rj==0);
+
+/*csrwr csrwr: rd, csr_num
+* rd(old) --> CSR[csr_num]
+* rd(new) <-- CSR[csr_num](old)
+*/
+assign inst_csrwr = op_31_26_d[6'h1] & ~inst[25] & ~inst[24] & (rj==1);
+
+/*csrxchg csrxchg: rd, rj, csr_num
+* rd(old) --> CSR[csr_num] according to wmask in rj
+* rd(new) <-- CSR[csr_num](old)
+*/
+assign inst_csrxchg = op_31_26_d[6'h1] & ~inst[25] & ~inst[24] & (rj!=0 & rj!=1);
+
+/*ertn ertn: 
+* CSR_PRMD[PPLV,PIE] --> CSR_CRMD[PLV,IE]
+* pc <-- CSR_ERA
+*/
+assign inst_ertn = op_31_26_d[6'h1] & op_25_22_d[4'h9] 
+                 & op_21_20_d[2'h0] & op_19_15_d[5'h10] & (rk==5'b01110);
+
+/*syscall syscall: code
+* run syscall immediately according to code
+*/
+assign inst_syscall = op_31_26_d[6'h0] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h16];
+
+
 assign need_ui5   =  inst_slli_w | inst_srli_w | inst_srai_w;  
 assign need_si12  =  inst_addi_w | inst_ld_w | inst_st_w | inst_slti | inst_sltiu | inst_st_b | inst_st_h
                 | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu;   
@@ -324,7 +370,8 @@ assign br_offs = need_si26 ? {{ 4{i26[25]}}, i26[25:0], 2'b0} :
                              {{14{i16[15]}}, i16[15:0], 2'b0} ;   
 assign jirl_offs = {{14{i16[15]}}, i16[15:0], 2'b0};   
 
-assign src_reg_is_rd = inst_beq | inst_bne | inst_st_w | inst_blt | inst_bge | inst_bltu | inst_bgeu | inst_st_b | inst_st_h;
+assign src_reg_is_rd = inst_beq | inst_bne | inst_st_w | inst_blt | inst_bge | inst_bltu | inst_bgeu | inst_st_b | inst_st_h
+                        | inst_csrrd | inst_csrwr | inst_csrxchg;
 
 //used for judging br_taken
 assign rj_eq_rd = (rj_value == rkd_value);
@@ -347,10 +394,13 @@ assign unsigned_rj_less_rkd = ~cout;
 
 wire [31:0] ds_pc;
 
+//fs_to_ds_bus = {fetch_inst,fetch_pc}
 reg [`WIDTH_FS_TO_DS_BUS-1:0] fs_to_ds_bus_reg;
 always @(posedge clk)
     begin
         if(reset)
+            fs_to_ds_bus_reg <= 0;
+        else if(ertn_flush || wb_ex || has_int)
             fs_to_ds_bus_reg <= 0;
         else if(fs_to_ds_valid && ds_allow_in)         
             fs_to_ds_bus_reg <= fs_to_ds_bus;
@@ -359,18 +409,31 @@ assign {inst,ds_pc} = fs_to_ds_bus_reg;         //_reg;
 wire rf_we;
 wire [4:0] rf_waddr;
 wire [31:0] rf_wdata;
-assign {rf_we,rf_waddr,rf_wdata} = ws_to_ds_bus;
+
+
+//task12 add
+wire ws_csr_write;
+wire ws_ertn_flush;
+wire [13:0] ws_csr_num;
+wire ws_csr;
+assign {ws_csr, ws_csr_num, ws_ertn_flush, ws_csr_write, rf_we, rf_waddr,rf_wdata} = ws_to_ds_bus;
 
 wire es_we;
 wire [4:0] es_dest;
 wire [31:0] es_wdata;
+wire es_csr_write;
+wire [13:0] es_csr_num;
+wire es_csr;
+
 wire ms_we;
 wire [4:0] ms_dest;
 wire [31:0] ms_wdata;
-reg ds_valid;  
+wire ms_csr_write;
+wire [13:0] ms_csr_num;
+wire ms_csr;
 
-assign {es_we,es_dest,es_res_from_mem,es_wdata} = es_to_ds_bus;
-assign {ms_we,ms_dest,ms_wdata} = ms_to_ds_bus;
+assign {es_we, es_dest, es_res_from_mem, es_wdata, es_csr_write, es_csr_num, es_csr} = es_to_ds_bus;
+assign {ms_we, ms_dest, ms_wdata, ms_csr_write, ms_csr_num, ms_csr} = ms_to_ds_bus;
 
 assign br_taken = ((inst_beq && rj_eq_rd) || (inst_bne && !rj_eq_rd) 
                    || (inst_blt && signed_rj_less_rkd) || (inst_bltu && unsigned_rj_less_rkd)
@@ -400,7 +463,7 @@ assign imm = src2_is_4 ? 32'h4                      :
              
 assign dst_is_r1     = inst_bl;    
 assign dest = dst_is_r1 ? 5'd1 : rd;
-assign gr_we         = ~inst_st_w & ~inst_st_b & ~inst_st_h & ~inst_beq & ~inst_bne & ~inst_b & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu;   
+assign gr_we         = ~inst_st_w & ~inst_st_b & ~inst_st_h & ~inst_beq & ~inst_bne & ~inst_b & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_ertn;   
 assign mem_we        = inst_st_w | inst_st_b | inst_st_h;
 
 assign alu_op[ 0] = inst_add_w | inst_addi_w | inst_ld_w | inst_st_w
@@ -465,6 +528,10 @@ assign ld_op[0] = inst_ld_b | inst_ld_bu;//load byte
 assign ld_op[1] = inst_ld_h | inst_ld_hu;//load half word
 assign ld_op[2] = inst_ld_h | inst_ld_b;//is signed
 
+
+/*----------------------------------------------------------------*/
+
+/*------------------------------ds_to_ex_bus--------------------------*/
 assign ds_to_es_bus[31:   0] = ds_pc;     
 assign ds_to_es_bus[63:  32] = rj_value; 
 assign ds_to_es_bus[95:  64] = rkd_value; 
@@ -480,8 +547,20 @@ assign ds_to_es_bus[152:150] = mul_op;
 assign ds_to_es_bus[155:153] = div_op;
 assign ds_to_es_bus[158:156] = st_op;
 assign ds_to_es_bus[161:159] = ld_op;
- 
+//task12
+assign ds_to_es_bus[175:162] = ds_csr_num;
+assign ds_to_es_bus[207:176] = ds_csr_wmask;
+assign ds_to_es_bus[208:208] = ds_csr_write;
+assign ds_to_es_bus[209:209] = ds_ertn_flush;
+assign ds_to_es_bus[210:210] = ds_csr;
+assign ds_to_es_bus[211:211] = ds_ex_syscall;
+assign ds_to_es_bus[226:212] = ds_code;
 
+
+/*----------------------------------------------------------------*/
+
+/*------------------------------read address signal--------------------------*/
+reg ds_valid;
 wire if_read_addr1;  
 wire if_read_addr2;   
 
@@ -491,13 +570,17 @@ assign if_read_addr2 = inst_beq || inst_bne || inst_xor || inst_or || inst_and |
                        inst_st_w || inst_st_b || inst_st_h ||
                        inst_sll_w || inst_srl_w || inst_sra_w ||
                        inst_mul_w || inst_mulh_w || inst_mulh_wu || inst_div_w || inst_div_wu ||
-                       inst_mod_w || inst_mod_wu || inst_blt || inst_bge || inst_bltu || inst_bgeu;
+                       inst_mod_w || inst_mod_wu || inst_blt || inst_bge || inst_bltu || inst_bgeu ||
+                       inst_csrrd || inst_csrwr || inst_csrxchg;
 
+/*----------------------------------------------------------------*/
+
+/*------------------------------block signal--------------------------*/
 wire Need_Block;    //ex_crush & es_res_from_mem
 
 wire ex_crush1;
 wire ex_crush2;
-assign Need_Block = (ex_crush1 || ex_crush2) && es_res_from_mem;
+assign Need_Block = (((ex_crush1 || ex_crush2) && es_res_from_mem) || csr_crush) && ~ertn_flush && ~wb_ex && ~has_int;
 
 assign ex_crush1 = (es_we && es_dest!=0) && (if_read_addr1 && rf_raddr1==es_dest);
 assign ex_crush2 = (es_we && es_dest!=0) && (if_read_addr2 && rf_raddr2==es_dest);
@@ -512,9 +595,15 @@ wire wb_crush2;
 assign wb_crush1 = (rf_we && rf_waddr!=0) && (if_read_addr1 && rf_raddr1==rf_waddr);
 assign wb_crush2 = (rf_we && rf_waddr!=0) && (if_read_addr2 && rf_raddr2==rf_waddr);
 
+wire csr_crush;
+assign csr_crush = (es_csr && (ex_crush1 || ex_crush2)) || (ms_csr && (mem_crush1 || mem_crush2)); 
+
 assign forward_rdata1 = ex_crush1? es_wdata : mem_crush1? ms_wdata : wb_crush1? rf_wdata : rf_rdata1;
 assign forward_rdata2 = ex_crush2? es_wdata : mem_crush2? ms_wdata : wb_crush2? rf_wdata : rf_rdata2;
 
+/*----------------------------------------------------------------*/
+
+/*------------------------------handshake signal--------------------------*/
 wire ds_ready_go;
 assign ds_ready_go = ~Need_Block;         
 assign ds_allow_in = !ds_valid || ds_ready_go && es_allow_in;
@@ -532,6 +621,36 @@ always @(posedge clk)
         else if(ds_allow_in)
             ds_valid <= fs_to_ds_valid;
     end
+
+/*----------------------------------------------------------------*/
+
+/*------------------------------CSR inst--------------------------*/
+
+//inst[23:10] -- csr_num
+wire [13:0] ds_csr_num;
+assign ds_csr_num = inst[23:10];
+
+wire ds_ex_syscall;
+assign ds_ex_syscall = inst_syscall;
+
+wire [14:0] ds_code;
+assign ds_code = inst[14:0];
+
+wire ds_csr;
+assign ds_csr = inst_csrrd | inst_csrwr | inst_csrxchg;
+
+wire ds_csr_write;
+assign ds_csr_write = inst_csrwr || inst_csrxchg;
+
+wire [31:0] ds_csr_wmask;
+assign ds_csr_wmask = inst_csrxchg ? rj_value : 32'hffffffff;       //mask <-- rj
+
+wire ds_ertn_flush;
+assign ds_ertn_flush = inst_ertn;
+
+/*----------------------------------------------------------------*/
+
+/*------------------------------regfile--------------------------*/
 
 assign rf_raddr1 = rj;  
 assign rf_raddr2 = src_reg_is_rd ? rd : rk; 
