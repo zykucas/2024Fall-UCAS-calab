@@ -153,117 +153,109 @@
         
             
     \subsection{exp13}
-        \subsubsection{添加转移指令}
-          1.添加转移指令首先需要增加有关指令类型的译码信号，按照之前的格式，写明该指令的汇编代码和具体操作，以beq和bne指令为例：
+        \subsubsection{添加异常、中断支持}
+          1.根据讲义提供的思路，添加本次实验所要求的中断及异常的判定信号，以及对应的判定逻辑。
           \par
-          2.需要根据指令类型译码信号更改其他相关的译码信号，如gr-we、br-target等，剩余的指令通路与之前的转移指令相同。
-          \par
-          3.为了同时处理有符号数和无符号数的比较，需要利用加法进行判断，在ID模块中加入了一个小加法器。
           \begin{lstlisting}[language=Verilog]
-            //imitation calcu slt and sltu in alu
-          wire signed_rj_less_rkd;
-          wire unsigned_rj_less_rkd;
+          assign fs_exc_ADEF = inst_sram_en && (fetch_pc[1] | fetch_pc[0]);
+    
+          assign      ds_exc_INE = ~(inst_add_w | inst_sub_w | inst_slt | inst_sltu 
+            | inst_nor | inst_and | inst_or | inst_xor | inst_slli_w 
+            | inst_srli_w | inst_srai_w | inst_addi_w | inst_ld_w | inst_st_w 
+            | inst_jirl | inst_b | inst_bl | inst_beq | inst_bne | inst_lu12i_w 
+            | inst_slti | inst_sltiu | inst_andi | inst_ori | inst_xori | inst_sll_w 
+            | inst_srl_w | inst_sra_w | inst_pcaddu12i | inst_mul_w | inst_mulh_w 
+            | inst_mulh_wu | inst_div_w | inst_div_wu | inst_mod_w | inst_mod_wu 
+            | inst_blt | inst_bge | inst_bltu | inst_bgeu | inst_st_b | inst_st_h 
+            | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu
+            | inst_csrrd | inst_csrwr | inst_csrxchg | inst_ertn | inst_syscall
+            | inst_rdcntvl_w | inst_rdcntvh_w | inst_rdcntid | inst_break) && (ds_pc != 32'b0) ;
 
-          wire cin;
-          assign cin = 1'b1;
-          wire [31:0] adver_rkd_value;
-          assign adver_rkd_value = ~rkd_value;
-          wire [31:0] rj_rkd_adder_result;
-          wire cout;
-          assign {cout, rj_rkd_adder_result} = rj_value + adver_rkd_value + cin;
 
-          assign signed_rj_less_rkd = (rj_value[31] & ~rkd_value[31])
-                                        | ((rj_value[31] ~^ rkd_value[31]) & rj_rkd_adder_result[31]);
-          assign unsigned_rj_less_rkd = ~cout;  
+          //exp13 ALE exception
+            wire ld_st_w,ld_st_h;
+            assign ld_st_w = es_st_op[0] | (es_ld_op[1:0] == 2'b0 & es_res_from_mem);
+            assign ld_st_h = es_st_op[2] | es_ld_op[1];
+            assign es_exc_ALE = ((ld_st_w & (es_unaligned_addr != 2'b0)) | (ld_st_h & (es_unaligned_addr[0]))) & es_valid;
+            //exp13 int
+            assign has_int = ((csr_estat_is[11:0] & csr_ecfg_lie[12:0]) != 12'b0)
+                && (csr_crmd_ie == 1'b1);
+            
           \end{lstlisting}
-          首先将rd中的值取反，然后将rj与~rd相加，并加入一个进位1，计算出一个33位的加法结果，其中最高位cout为进位。
-          对于无符号数的比较而言，如果没有进位则说明rj小于rd，即unsigned\_rj\_less\_rkd为1。
-          对于有符号数的比较而言，如果rj的符号为1，而rd的符号位为0，则可直接说明rj小于rd，即signed\_rj\_less\_rkd为1；
-          如果rj和rd的符号位相同，则需要比较rj与~rd的加法结果的符号位，如果为1则说明rj小于rd，即signed\_rj\_less\_rkd为1。
-        
-        \subsubsection{添加st指令}
-        在LoongArch指令集中st.b、st.h、st.w分别对应store byte（1字节）/halfword（2字节）/word（4字节），其中.h和.w分别要求地址2字节和4字节对齐。
-        \par
-        1.添加转移指令首先需要增加有关指令类型的译码信号,不再次举例
-        \par
-        2.st.b的四种偏移00、01、10、11分别对应mem-we为0001、0010、0100、1000。st.h的两种偏移00、10分别对应mem-we为0011、1100。如此对mem-we进行赋值。32位的wdata将8位数据重复4次，16位数据重复2次填满即可
-        \par
-        3.在EX中对未对齐的地址进行对齐操作，定义了一个写使能信号 w-strb 和真实写数据 real-wdata，根据 st-op 的不同情况进行选择
-        \begin{lstlisting}[language=Verilog]
-            wire [3:0] w_strb;  //depend on st_op
-            assign w_strb =  es_st_op[0] ? 4'b1111 :
-                             es_st_op[1] ? (es_unaligned_addr==2'b00 ? 4'b0001 : es_unaligned_addr==2'b01 ? 4'b0010 : 
-                                            es_unaligned_addr==2'b10 ? 4'b0100 : 4'b1000) : 
-                             es_st_op[2] ? (es_unaligned_addr[1] ? 4'b1100 : 4'b0011) : 4'b0000;
-            wire [31:0] real_wdata;
-            assign real_wdata = es_st_op[0] ? es_rkd_value :
-                                es_st_op[1] ? {4{es_rkd_value[7:0]}} :
-                                es_st_op[2] ? {2{es_rkd_value[15:0]}} : 32'b0;
-        \end{lstlisting}\par
-        4.对SRAM相关信号进行修改
-        \begin{lstlisting}[language=Verilog]
+          根据讲义内容，异常相当于给异常流水线打上对应标签，因此需要将异常标签通过流水级间总线进行传递，这里以EXE级向MEM级传递为例
+          
+            \begin{lstlisting}[language=Verilog]
+            //exp13
+            assign es_to_ms_bus[173:173] = es_exc_ADEF;
+            assign es_to_ms_bus[174:174] = es_exc_INE;
+            assign es_to_ms_bus[175:175] = es_exc_ALE;
+            assign es_to_ms_bus[176:176] = es_exc_break;
+            assign es_to_ms_bus[177:177] = es_has_int;
+            assign es_to_ms_bus[209:178] = es_vaddr;
+          \end{lstlisting}
+          2.为了做到精确异常，需要实现异常时清空流水线，异常流水级后不能产生任何运行效果.这里重点关注紧跟在异常流水级之后的st类指令。
+          \begin{lstlisting}[language=Verilog]
+          //EX.v
+            wire if_es_has_int;
+            assign if_es_has_int = es_ex_syscall || es_ertn_flush || es_exc_ADEF || es_exc_ALE || es_exc_INE || es_exc_break || es_has_int || wb_ex;
+            
             assign data_sram_en    = 1'b1;   
-            assign data_sram_wen   = (es_mem_we && es_valid) ? w_strb : 4'b0000;
+            assign data_sram_wen   = (es_mem_we && es_valid && ~has_int && ~if_ms_has_int && ~wb_ex && ~if_es_has_int & ~ertn_flush & ~es_ertn_flush) ? w_strb : 4'b0000;
             assign data_sram_addr  = (es_mul_op != 0) ? {es_mul_result[31:2],2'b00} : {es_alu_result[31:2],2'b00};
-            assign data_sram_wdata = real_wdata;   
-        \end{lstlisting}
-
-        \subsubsection{添加ld指令}
+            assign data_sram_wdata = real_wdata;        
+            
+          \end{lstlisting}
         
+        \subsubsection{增加控制状态寄存器}
+        讲义针对如何添加ECFG，BADV，TID，TCFG，TVAL，TICLR控制状态寄存器以及如何维护不同寄存器的各个域均有详细描述,按照小组之前的代码框架对讲义上的实现方法进行微调，与exp12整体框架相同，具体代码也在书中多有提及，不再详细罗列。
+
+        \subsubsection{增加计时器相关指令}
+        添加rdcntvl.w,rdcntvh.w,rdcntid指令
         \par
-        1.添加转移指令首先需要增加有关指令类型的译码信号,与之前添加各项指令译码。
+        1.添加上述指令相关的译码信号。
         \begin{lstlisting}[language=Verilog]
-        assign inst_ld_b = op_31_26_d[6'h0a] & op_25_22_d[4'h0];
-        assign inst_ld_h = op_31_26_d[6'h0a] & op_25_22_d[4'h1];
-        assign inst_ld_bu = op_31_26_d[6'h0a] & op_25_22_d[4'h8];
-        assign inst_ld_hu = op_31_26_d[6'h0a] & op_25_22_d[4'h9]; 
+        assign inst_rdcntid  =  op_31_26_d[6'h0] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h0] & (rk == 5'b11000) & (rd == 5'h0);
+        assign inst_rdcntvl_w = op_31_26_d[6'h0] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h0] & (rk == 5'b11000) & (rj == 5'h0);
+        assign inst_rdcntvh_w = op_31_26_d[6'h0] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h0] & (rk == 5'b11001) & (rj == 5'h0);
         \end{lstlisting}
-        此外添加3位ld op，搭配res from mem信号标志当前执行的是哪个load指令，其中0位表示load byte，1位表示load half word，2位表示为有符号扩展。
+        这里采用讲义建议，后两条指令在EXE阶段完成，rdcntid指令在ID阶段和csr类指令共用一系列控制喜好，仅在csr num上做区分，与csr类指令一起在WB阶段完成,
         \begin{lstlisting}[language=Verilog]
-        wire [2:0]  ld_op;
-        assign ld_op[0] = inst_ld_b | inst_ld_bu;//load byte
-        assign ld_op[1] = inst_ld_h | inst_ld_hu;//load half word
-        assign ld_op[2] = inst_ld_h | inst_ld_b;//is signed 
+        //EX.v
+        assign es_cal_result = es_rdcntvl_w ? global_time_cnt[31:0] : es_rdcntvh_w ? global_time_cnt[63:32] :
+            es_div_op[0] ? (es_div_op[2] ? es_div_result:es_mod_result ):
+            ((es_mul_op != 0) ? es_mul_result : es_alu_result);
+            
+        //ID.v
+        wire [13:0] ds_csr_num;
+        assign ds_csr_num = inst_rdcntid ? `CSR_TID :inst[23:10];
+
+        
         \end{lstlisting}
-        大部分译码部分相关信号只用把原先只有ld.w信号的部分扩展成各类ld指令的信号，不再赘述。
+        其余部分没有额外需要注意内容，不在赘述
         \par
-        2.在EX级需要注意，由于载入的不再是按字节load，地址的后两位可能非零，这一数据需要传递到MEM级进行处理。此外，ld op也需要传递到MEM级来处理读取的数据。
-        \begin{lstlisting}[language=Verilog]
-        wire [1:0] es_unaligned_addr;
-        assign es_unaligned_addr = (es_mul_op != 0) ? es_mul_result[1:0] : es_alu_result[1:0];
-        assign es_to_ms_bus[72:71] = es_unaligned_addr;
-        assign es_to_ms_bus[75:73] = es_ld_op; 
-        \end{lstlisting}
-        \par
-        3.在MEM级根据ld op对读取的数据进行选择和扩充。
-        \begin{lstlisting}[language=Verilog]
-            wire [31:0] load_b_res,load_h_res;
-            assign load_b_res   = (unaligned_addr == 2'h0) ? {{ms_ld_op[2]?{24{data_sram_rdata[7]}}:24'b0} ,data_sram_rdata[7:0]}
-                    :(unaligned_addr == 2'h1) ? {{ms_ld_op[2]?{24{data_sram_rdata[15]}}:24'b0},data_sram_rdata[15:8]}
-                    :(unaligned_addr == 2'h2) ? {{ms_ld_op[2]?{24{data_sram_rdata[23]}}:24'b0},data_sram_rdata[23:16]}
-                    :(unaligned_addr == 2'h3) ? {{ms_ld_op[2]?{24{data_sram_rdata[31]}}:24'b0},data_sram_rdata[31:24]} : 32'b0;
-            assign load_h_res   = (unaligned_addr[1]) ? {{ms_ld_op[2]?{16{data_sram_rdata[31]}}:16'b0} ,data_sram_rdata[31:16]}
-                    :{{ms_ld_op[2]?{16{data_sram_rdata[15]}}:16'b0} ,data_sram_rdata[15:0]};
-            assign mem_result   = ms_ld_op[0] ? load_b_res 
-                    : ms_ld_op[1] ? load_h_res
-                    : data_sram_rdata;
-        \end{lstlisting}\par
+        
 
 \section{\sectionfont 实验过程中遇到的问题、对问题的思考过程及解决方法}
-    \subsection{exp10}
-        1.在添加乘法指令时，需要注意传递给乘法器的数据只可能是寄存器传来的数据，所以这里传给乘法器的数据为es rj value，es rkd value，而非cal src。
-    \subsection{exp11}
-        1.在添加有关ld.b,ld.h等指令有关扩展至32位的逻辑时，发现先判断后复制的逻辑会导致只有最后一位填充，而先扩充成24位在判断选择就能正常执行，具体指令如下：
+    \subsection{exp12}
+    在添加ertn指令过程中，因为ertn指令同样涉及类似于精确异常的操作，需要保证当ertn流水至WB级时EX级的st指令无法对内存产生影响。这里利用和异常类似的方法实现
         \begin{lstlisting}[language=Verilog]
-            assign load_h_res   = (unaligned_addr[1]) ? {{24{ms_ld_op[2]?{data_sram_rdata[31]}:0}} ,data_sram_rdata[31:16]}
-        :{{ms_ld_op[2]?{16{data_sram_rdata[15]}}:16'b0} ,data_sram_rdata[15:0]};
-        // 0x8XXX -> 0x00018XXX
-            
-            assign load_h_res   = (unaligned_addr[1]) ? {{ms_ld_op[2]?{16{data_sram_rdata[31]}}:16'b0} ,data_sram_rdata[31:16]}
-        :{{ms_ld_op[2]?{16{data_sram_rdata[15]}}:16'b0} ,data_sram_rdata[15:0]};
-        // 0x8XXX -> 0xffff8XXX
+            assign data_sram_wen   = (es_mem_we && es_valid && ~has_int && ~if_ms_has_int && ~wb_ex && ~if_es_has_int & ~ertn_flush & ~es_ertn_flush) ? w_strb : 4'b0000;
+
         \end{lstlisting}
-        猜测是由于前者会把扩展后的24位整体当作一位添加在原本的16位之前，然后自动填充15位0，导致实验结果与预期不同。修改成后者便能正常运行。
+    \subsection{exp13}
+        1.需要注意访存地址不对齐（ALE）的情况下，不能继续执行访存指令，需要直接进入异常
+        \begin{lstlisting}[language=Verilog]
+        //WB.v
+            assign ws_we = ws_gr_we && ws_valid && ~ws_exc_ALE;
+        \end{lstlisting}
+        而对于跳转至错误地址的跳转指令（ADEF），则需要先正常完成跳转指令，在下一步取值时判断异常。经过调试发现，ADEF以fetch pc作为判断依据比以next pc作为判断依据更容易实现。因此这里采用前者。
+        \begin{lstlisting}[language=Verilog]
+        //IF.v
+            // ADEF exception
+            wire fs_exc_ADEF;//pc not end with 2'b00
+            assign fs_exc_ADEF = inst_sram_en && (fetch_pc[1] | fetch_pc[0]);
+        \end{lstlisting}
+        2.在助教的帮助下， 学会了利用金标文件调试。金标文件相较于汇编文件，能够更好的展现程序的运行顺序。但由于里面只包含运行结果的数据，需要辅助汇编文件一同产看，才能更好的发挥其作用
 \section{\sectionfont 实验分工}
     张钰堃负责完成exp12，刘景平负责完成exp13。
 \end{document}
