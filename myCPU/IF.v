@@ -79,6 +79,12 @@ assign inst_sram_wdata = 32'b0;
 
 wire [31:0] fetch_inst;
 assign fetch_inst = inst_sram_rdata;
-assign fs_to_ds_bus = {fetch_inst,fetch_pc};
+// ADEF exception
+wire fs_exc_ADEF;//pc not end with 2'b00
+assign fs_exc_ADEF = inst_sram_en && (fetch_pc[1] | fetch_pc[0]);
+
+assign fs_to_ds_bus = {fs_exc_ADEF,fetch_inst,fetch_pc};
+
+
 
 endmodule

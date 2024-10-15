@@ -31,10 +31,11 @@ module stage5_WB(
     output                      wb_ex,
     output [31:0]               wb_pc,
     output [5:0]                wb_ecode,
-    output [8:0]                wb_esubcode
+    output [8:0]                wb_esubcode,
+    output [31:0]               wb_vaddr
 );
 
-/*-----------------------Êé•Êî∂ms_to_ws_bus----------------*/
+/*-----------------------Ω” ’ms_to_ws_bus----------------*/
 /*
 assign ms_to_ws_bus[31:0]  = ms_pc;
 assign ms_to_ws_bus[32:32] = ms_gr_we;
@@ -49,6 +50,11 @@ assign ms_to_ws_bus[118:118] = ms_csr;
 assign ms_to_ws_bus[150:119] = ms_csr_wvalue;
 assign ms_to_ws_bus[151:151] = ms_ex_syscall;
 assign ms_to_ws_bus[166:152] = ms_code;
+//exp13
+assign ms_to_ws_bus[167:167] = ms_exc_ADEF;
+assign ms_to_ws_bus[168:168] = ms_exc_INE;
+assign ms_to_ws_bus[169:169] = ms_exc_ALE;
+assign ms_to_ws_bus[170:170] = ms_exc_break;
 */
 
 wire [31:0] ws_pc;
@@ -64,6 +70,12 @@ wire        ws_csr;
 wire [31:0] ws_csr_wvalue;
 wire        ws_ex_syscall;
 wire [14:0] ws_code;
+wire ws_exc_ADEF;
+wire ws_exc_INE;
+wire ws_exc_ALE;
+wire ws_exc_break;
+wire ws_has_int;
+wire [31:0] ws_vaddr;
 
 reg [`WIDTH_MS_TO_WS_BUS-1:0] ms_to_ws_bus_reg;
 always @(posedge clk)
@@ -76,14 +88,15 @@ always @(posedge clk)
             ms_to_ws_bus_reg <= 0;
     end 
 
-assign {ws_code, ws_ex_syscall, ws_csr_wvalue, ws_csr, ws_ertn_flush, ws_csr_write, ws_csr_wmask, ws_csr_num,
+assign {ws_vaddr,ws_has_int,ws_exc_break,ws_exc_ALE,ws_exc_INE,ws_exc_ADEF,
+        ws_code, ws_ex_syscall, ws_csr_wvalue, ws_csr, ws_ertn_flush, ws_csr_write, ws_csr_wmask, ws_csr_num,
         ws_final_result, ws_dest,ws_gr_we, ws_pc} = ms_to_ws_bus_reg;
 
 
 /*-------------------------------------------------------*/
 
 /*---------------------------link csr_reg---------------------*/
-assign csr_num = ws_csr_num;
+assign csr_num = wb_ex ? `CSR_ERA : ws_csr_num ;
 assign csr_re = 1'b1;
 //input [31:0] csr_rvalue
 
@@ -92,16 +105,21 @@ assign csr_wvalue = ws_csr_wvalue;
 assign csr_wmask = ws_csr_wmask;
 assign ertn_flush = ws_ertn_flush;
 
-assign wb_ex = ws_ex_syscall;    // assign wb_ex = ws_ex_syscall || ws_ex_xxx || ......
+assign wb_ex = ws_ex_syscall | ws_exc_break | ws_exc_ALE | ws_exc_INE | ws_exc_ADEF | ws_has_int ;
+// assign wb_ex = ws_ex_syscall || ws_ex_xxx || ......
 assign wb_pc = ws_pc;
 
 /*
  *deal with ecode and esubcode according to kind of ex
  *in task12, we just finish syscall
  */
-assign wb_ecode = ws_ex_syscall ? 6'hb : 6'h0;          //syscall
-assign wb_esubcode = ws_ex_syscall ? 9'h0 : 9'h0;       //syscall
-
+assign wb_ecode =ws_exc_ADEF ? 6'h8:
+                ws_ex_syscall ? 6'hb :                //syscall
+                ws_exc_break? 6'hc:
+                ws_exc_INE  ? 6'hd :
+                ws_exc_ALE  ? 6'h9: 6'h0;
+assign wb_esubcode =9'h0;//except ADEM,esubcode always is 0       
+assign wb_vaddr = ws_vaddr;
 /*-------------------------------------------------------*/
 
 /*----------------------ws_to_ds_bus-----------------*/
@@ -109,11 +127,11 @@ assign wb_esubcode = ws_ex_syscall ? 9'h0 : 9'h0;       //syscall
 reg ws_valid;    
 
 wire ws_we;
-assign ws_we = ws_gr_we && ws_valid;
+assign ws_we = ws_gr_we && ws_valid && ~ws_exc_ALE;
 wire [4:0] ws_waddr;
 assign ws_waddr = ws_dest;
 wire [31:0] ws_wdata;
-assign ws_wdata = ws_csr? csr_rvalue : ws_final_result;
+assign ws_wdata = ws_csr ? csr_rvalue : ws_final_result;
 
 
 

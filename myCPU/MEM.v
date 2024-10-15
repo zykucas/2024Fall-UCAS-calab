@@ -45,6 +45,11 @@ assign es_csr_wvalue = es_rkd_value;
 assign es_to_ms_bus[156:125] = es_csr_wvalue;
 assign es_to_ms_bus[157:157] = es_ex_syscall;
 assign es_to_ms_bus[172:158] = es_code;
+//exp13
+assign es_to_ms_bus[173:173] = es_exc_ADEF;
+assign es_to_ms_bus[174:174] = es_exc_INE;
+assign es_to_ms_bus[175:175] = es_exc_ALE;
+assign es_to_ms_bus[176:176] = es_exc_break;
 */
 
 wire [31:0] ms_pc;
@@ -63,14 +68,19 @@ wire ms_ertn_flush;
 wire ms_csr_write;
 wire [31:0] ms_csr_wmask;
 wire [13:0] ms_csr_num;
-
+wire ms_exc_ADEF;
+wire ms_exc_INE;
+wire ms_exc_ALE;
+wire ms_exc_break;
+wire ms_has_int;
+wire [31:0] ms_vaddr;
 
 reg [`WIDTH_ES_TO_MS_BUS-1:0] es_to_ms_bus_reg;
 always @(posedge clk)
     begin
         if(reset)
             es_to_ms_bus_reg <= 0;
-        else if(ertn_flush || has_int || wb_ex)
+        else if(ertn_flush || wb_ex)
             es_to_ms_bus_reg <= 0;
         else if(es_to_ms_valid && ms_allow_in)
             es_to_ms_bus_reg <= es_to_ms_bus;
@@ -78,7 +88,8 @@ always @(posedge clk)
             es_to_ms_bus_reg <= 0;
     end 
 
-assign {ms_code, ms_ex_syscall, ms_csr_wvalue, ms_csr, ms_ertn_flush, ms_csr_write, ms_csr_wmask, ms_csr_num,
+assign {ms_vaddr,ms_has_int,ms_exc_break,ms_exc_ALE,ms_exc_INE,ms_exc_ADEF,
+        ms_code, ms_ex_syscall, ms_csr_wvalue, ms_csr, ms_ertn_flush, ms_csr_write, ms_csr_wmask, ms_csr_num,
         ms_ld_op,unaligned_addr,ms_alu_result, ms_dest, ms_res_from_mem,
         ms_gr_we, ms_pc} = es_to_ms_bus_reg;
 
@@ -112,6 +123,13 @@ assign ms_to_ws_bus[118:118] = ms_csr;
 assign ms_to_ws_bus[150:119] = ms_csr_wvalue;
 assign ms_to_ws_bus[151:151] = ms_ex_syscall;
 assign ms_to_ws_bus[166:152] = ms_code;
+//exp13
+assign ms_to_ws_bus[167:167] = ms_exc_ADEF;
+assign ms_to_ws_bus[168:168] = ms_exc_INE;
+assign ms_to_ws_bus[169:169] = ms_exc_ALE;
+assign ms_to_ws_bus[170:170] = ms_exc_break;
+assign ms_to_ws_bus[171:171] = ms_has_int;
+assign ms_to_ws_bus[203:172] = ms_vaddr;
 /*-------------------------------------------------------*/
 
 /*--------------------------valid------------------------*/
@@ -119,7 +137,7 @@ reg ms_valid;
 wire ms_ready_go;
 assign ms_ready_go = 1'b1;
 assign ms_allow_in = !ms_valid || ms_ready_go && ws_allow_in;
-assign ms_to_ws_valid = (ms_valid && ms_ready_go) & ~ertn_flush & ~has_int & ~wb_ex;
+assign ms_to_ws_valid = (ms_valid && ms_ready_go) & ~ertn_flush & ~wb_ex;
 
 always @(posedge clk)
     begin
@@ -141,6 +159,6 @@ assign ms_to_ds_bus = {ms_gr_we,ms_dest,ms_final_result,
 /*--------------------deliver if_ms_has_int to es------------------*/
 //this signal is for helping ex_stage to judge if it should cancel inst_store due to exception
 // in task 12 we just consider syscall
-assign if_ms_has_int = ms_ex_syscall;
+assign if_ms_has_int = ms_ex_syscall | ms_exc_ADEF | ms_exc_INE | ms_exc_ALE | ms_exc_break | ms_ertn_flush;
 
 endmodule

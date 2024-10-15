@@ -60,6 +60,8 @@ When an exception occurs, set PLV to 0 to ensure the kernel state at the highest
 When executing the ERTN instruction to return from the exception handler, CSR_PRMD[PPLV] --> CSR_CRMD[PLV].
 */
 reg [1:0] csr_crmd_plv;
+reg [1:0] csr_prmd_pplv;
+reg csr_prmd_pie;
 
 always @(posedge clk)
     begin
@@ -116,8 +118,6 @@ reg [22:0] csr_crmd_zero;
 
 /*-------------------------- Previous Mode Information PRMD -------------------------*/
 
-reg [1:0] csr_prmd_pplv;
-reg csr_prmd_pie;
 
 always @(posedge clk)
     begin
@@ -155,8 +155,8 @@ always @(posedge clk)
         if(reset)
             csr_ecfg_lie <= 13'b0;
         else if(csr_we && csr_num == `CSR_ECFG)
-            csr_ecfg_lie <= csr_wmask[`CSR_ECFG_LIE] & csr_wvalue[`CSR_ECFG_LIE]
-                         | ~csr_wmask[`CSR_ECFG_LIE] & csr_ecfg_lie;
+            csr_ecfg_lie <= csr_wmask[`CSR_ECFG_LIE] & 13'h1bff & csr_wvalue[`CSR_ECFG_LIE]
+                         | ~csr_wmask[`CSR_ECFG_LIE] & 13'h1bff & csr_ecfg_lie;
     end
 
 // Not yet used
@@ -342,10 +342,12 @@ always @(posedge clk)
                         | ~csr_wmask[`CSR_TCFG_EN] & csr_tcfg_en;
 
         if(csr_we && csr_num == `CSR_TCFG)
+        begin
             csr_tcfg_periodic <= csr_wmask[`CSR_TCFG_PERIODIC] & csr_wvalue[`CSR_TCFG_PERIODIC]
                               | ~csr_wmask[`CSR_TCFG_PERIODIC] & csr_tcfg_periodic;
             csr_tcfg_initval  <= csr_wmask[`CSR_TCFG_INITVAL] & csr_wvalue[`CSR_TCFG_INITVAL]
                               | ~csr_wmask[`CSR_TCFG_INITVAL] & csr_tcfg_initval;
+        end
     end
 
 /*---------------------------------------------------------------------*/
@@ -433,7 +435,7 @@ assign csr_estat_rvalue = {1'b0, csr_estat_esubcode, csr_estat_ecode,
                            3'b0, csr_estat_is};
 assign csr_era_rvalue = csr_era_pc;
 assign csr_badv_rvalue = csr_badv_vaddr;
-assign csr_eentry_rvalue = {csr_eentry_va, 6'b0};
+assign csr_eentry_rvalue = {csr_eentry_va, csr_eentry_zero};
 assign csr_save0_rvalue = csr_save0_data;
 assign csr_save1_rvalue = csr_save1_data;
 assign csr_save2_rvalue = csr_save2_data;
@@ -464,7 +466,7 @@ assign csr_rvalue = {32{csr_num==`CSR_CRMD}} & csr_crmd_rvalue
 assign ertn_pc = csr_era_rvalue;
 assign ex_entry = csr_eentry_rvalue;
 
-assign has_int = ((csr_estat_is[11:0] & csr_ecfg_lie[11:0]) != 12'b0)
+assign has_int = ((csr_estat_is[11:0] & csr_ecfg_lie[12:0]) != 12'b0)
                 && (csr_crmd_ie == 1'b1);
 
 /*---------------------------------------------------------------------*/

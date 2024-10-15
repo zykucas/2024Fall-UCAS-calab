@@ -110,12 +110,34 @@ wire        inst_bgeu;
 
 wire        inst_st_b;
 wire        inst_st_h;
+wire        inst_ld_b;
+wire        inst_ld_bu;
+wire        inst_ld_h;
+wire        inst_ld_hu;
 //exp12
 wire        inst_csrrd;
 wire        inst_csrwr;
 wire        inst_csrxchg;
 wire        inst_ertn;
 wire        inst_syscall;
+//exp13
+wire        inst_rdcntvl_w;
+wire        inst_rdcntvh_w;
+wire        inst_rdcntid;
+wire        inst_break;
+
+wire        ds_exc_INE;
+assign      ds_exc_INE = ~(inst_add_w | inst_sub_w | inst_slt | inst_sltu 
+            | inst_nor | inst_and | inst_or | inst_xor | inst_slli_w 
+            | inst_srli_w | inst_srai_w | inst_addi_w | inst_ld_w | inst_st_w 
+            | inst_jirl | inst_b | inst_bl | inst_beq | inst_bne | inst_lu12i_w 
+            | inst_slti | inst_sltiu | inst_andi | inst_ori | inst_xori | inst_sll_w 
+            | inst_srl_w | inst_sra_w | inst_pcaddu12i | inst_mul_w | inst_mulh_w 
+            | inst_mulh_wu | inst_div_w | inst_div_wu | inst_mod_w | inst_mod_wu 
+            | inst_blt | inst_bge | inst_bltu | inst_bgeu | inst_st_b | inst_st_h 
+            | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu
+            | inst_csrrd | inst_csrwr | inst_csrxchg | inst_ertn | inst_syscall
+            | inst_rdcntvl_w | inst_rdcntvh_w | inst_rdcntid | inst_break) && (ds_pc != 32'b0) ;
 
 
 
@@ -354,6 +376,24 @@ assign inst_ertn = op_31_26_d[6'h1] & op_25_22_d[4'h9]
 * run syscall immediately according to code
 */
 assign inst_syscall = op_31_26_d[6'h0] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h16];
+//rdcntid rdcntid rj
+//rj <-- CSR_TID
+assign inst_rdcntid  =  op_31_26_d[6'h0] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h0]
+                & (rk == 5'b11000) & (rd == 5'h0);
+/*rdcntvl.w:  rdcnttvl.w rd
+* rd <-- global_time_cnt[31:0]
+*/
+assign inst_rdcntvl_w = op_31_26_d[6'h0] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h0]
+                & (rk == 5'b11000) & (rj == 5'h0);
+/*rdcntvh.w rd
+* rd <-- global_time_cnt[63:32]
+*/
+assign inst_rdcntvh_w = op_31_26_d[6'h0] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h0]
+                & (rk == 5'b11001) & (rj == 5'h0);
+/*break code
+* break exception
+*/
+assign inst_break = op_31_26_d[6'h0] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h14];
 
 
 assign need_ui5   =  inst_slli_w | inst_srli_w | inst_srai_w;  
@@ -393,6 +433,8 @@ assign signed_rj_less_rkd = (rj_value[31] & ~rkd_value[31])
 assign unsigned_rj_less_rkd = ~cout;  
 
 wire [31:0] ds_pc;
+//ADEF
+wire ds_exc_ADEF;
 
 //fs_to_ds_bus = {fetch_inst,fetch_pc}
 reg [`WIDTH_FS_TO_DS_BUS-1:0] fs_to_ds_bus_reg;
@@ -400,12 +442,12 @@ always @(posedge clk)
     begin
         if(reset)
             fs_to_ds_bus_reg <= 0;
-        else if(ertn_flush || wb_ex || has_int)
+        else if(ertn_flush || wb_ex)
             fs_to_ds_bus_reg <= 0;
         else if(fs_to_ds_valid && ds_allow_in)         
             fs_to_ds_bus_reg <= fs_to_ds_bus;
     end
-assign {inst,ds_pc} = fs_to_ds_bus_reg;         //_reg;
+assign {ds_exc_ADEF,inst,ds_pc} = fs_to_ds_bus_reg;         //_reg;
 wire rf_we;
 wire [4:0] rf_waddr;
 wire [31:0] rf_wdata;
@@ -462,8 +504,10 @@ assign imm = src2_is_4 ? 32'h4                      :
              32'b0 ;
              
 assign dst_is_r1     = inst_bl;    
-assign dest = dst_is_r1 ? 5'd1 : rd;
-assign gr_we         = ~inst_st_w & ~inst_st_b & ~inst_st_h & ~inst_beq & ~inst_bne & ~inst_b & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_ertn;   
+assign dest = inst_rdcntid ? rj : dst_is_r1 ? 5'd1 : rd;
+assign gr_we         = ~inst_st_w & ~inst_st_b & ~inst_st_h & ~inst_beq 
+                & ~inst_bne & ~inst_b & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu 
+                & ~inst_syscall & ~inst_ertn& ~inst_break & ~ds_exc_ADEF & ~ds_exc_INE ;    //ADEF no need write reg
 assign mem_we        = inst_st_w | inst_st_b | inst_st_h;
 
 assign alu_op[ 0] = inst_add_w | inst_addi_w | inst_ld_w | inst_st_w
@@ -555,7 +599,13 @@ assign ds_to_es_bus[209:209] = ds_ertn_flush;
 assign ds_to_es_bus[210:210] = ds_csr;
 assign ds_to_es_bus[211:211] = ds_ex_syscall;
 assign ds_to_es_bus[226:212] = ds_code;
-
+//exp13
+assign ds_to_es_bus[227:227] = ds_exc_ADEF;
+assign ds_to_es_bus[228:228] = ds_exc_INE;
+assign ds_to_es_bus[229:229] = inst_break;
+assign ds_to_es_bus[230:230] = inst_rdcntvh_w;
+assign ds_to_es_bus[231:231] = inst_rdcntvl_w;
+assign ds_to_es_bus[232:232] = has_int;
 
 /*----------------------------------------------------------------*/
 
@@ -564,7 +614,8 @@ reg ds_valid;
 wire if_read_addr1;  
 wire if_read_addr2;   
 
-assign if_read_addr1 = ~inst_b && ~inst_bl && ~inst_lu12i_w && ~inst_pcaddu12i;
+assign if_read_addr1 = ~inst_b && ~inst_bl && ~inst_lu12i_w && ~inst_pcaddu12i && ~inst_syscall 
+                && ~inst_rdcntid && ~inst_rdcntvl_w && ~inst_rdcntvh_w && ~inst_break ;
 assign if_read_addr2 = inst_beq || inst_bne || inst_xor || inst_or || inst_and || inst_nor ||
                        inst_sltu || inst_slt || inst_sub_w || inst_add_w || 
                        inst_st_w || inst_st_b || inst_st_h ||
@@ -628,7 +679,7 @@ always @(posedge clk)
 
 //inst[23:10] -- csr_num
 wire [13:0] ds_csr_num;
-assign ds_csr_num = inst[23:10];
+assign ds_csr_num = inst_rdcntid ? `CSR_TID :inst[23:10];
 
 wire ds_ex_syscall;
 assign ds_ex_syscall = inst_syscall;
@@ -637,7 +688,7 @@ wire [14:0] ds_code;
 assign ds_code = inst[14:0];
 
 wire ds_csr;
-assign ds_csr = inst_csrrd | inst_csrwr | inst_csrxchg;
+assign ds_csr = inst_csrrd | inst_csrwr | inst_csrxchg | inst_rdcntid;
 
 wire ds_csr_write;
 assign ds_csr_write = inst_csrwr || inst_csrxchg;

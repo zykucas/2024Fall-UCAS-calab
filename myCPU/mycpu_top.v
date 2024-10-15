@@ -342,8 +342,8 @@ stage5_WB wb(
     .wb_ex              (wb_ex),
     .wb_pc              (wb_pc),
     .wb_ecode           (wb_ecode),
-    .wb_esubcode        (wb_esubcode)
-
+    .wb_esubcode        (wb_esubcode),
+    .wb_vaddr           (wb_vaddr)
 );
 
 /*----------------------------------------------------------*/
