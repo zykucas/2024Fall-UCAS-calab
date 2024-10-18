@@ -35,7 +35,7 @@ module stage5_WB(
     output [31:0]               wb_vaddr
 );
 
-/*-----------------------Ω” ’ms_to_ws_bus----------------*/
+/*-----------------------ms_to_ws_bus----------------*/
 /*
 assign ms_to_ws_bus[31:0]  = ms_pc;
 assign ms_to_ws_bus[32:32] = ms_gr_we;
@@ -84,7 +84,7 @@ always @(posedge clk)
             ms_to_ws_bus_reg <= 0;
         else if(ms_to_ws_valid && ws_allow_in)
             ms_to_ws_bus_reg <= ms_to_ws_bus;
-        else
+        else if((wb_ex || ertn_flush) && ws_valid)
             ms_to_ws_bus_reg <= 0;
     end 
 

@@ -22,7 +22,8 @@ module stage2_ID(
     output [`WIDTH_BR_BUS-1:0] br_bus,
 
     input [`WIDTH_ES_TO_DS_BUS-1:0] es_to_ds_bus,
-    input [`WIDTH_MS_TO_WS_BUS-1:0] ms_to_ds_bus
+    input [`WIDTH_MS_TO_WS_BUS-1:0] ms_to_ds_bus,
+    input data_sram_data_ok
 );
 
 wire [31:0] inst;
@@ -460,22 +461,27 @@ wire [13:0] ws_csr_num;
 wire ws_csr;
 assign {ws_csr, ws_csr_num, ws_ertn_flush, ws_csr_write, rf_we, rf_waddr,rf_wdata} = ws_to_ds_bus;
 
+wire es_valid;
 wire es_we;
 wire [4:0] es_dest;
+wire if_es_load;
 wire [31:0] es_wdata;
 wire es_csr_write;
 wire [13:0] es_csr_num;
 wire es_csr;
 
+wire ms_to_ws_valid;//exp14 add
+wire ms_valid;//exp14 add
 wire ms_we;
 wire [4:0] ms_dest;
+wire if_ms_load; //exp14 add
 wire [31:0] ms_wdata;
 wire ms_csr_write;
 wire [13:0] ms_csr_num;
 wire ms_csr;
 
-assign {es_we, es_dest, es_res_from_mem, es_wdata, es_csr_write, es_csr_num, es_csr} = es_to_ds_bus;
-assign {ms_we, ms_dest, ms_wdata, ms_csr_write, ms_csr_num, ms_csr} = ms_to_ds_bus;
+assign {es_valid, es_we, es_dest, if_es_load, es_wdata, es_csr_write, es_csr_num, es_csr} = es_to_ds_bus;
+assign {ms_to_ws_valid, ms_valid, ms_we, ms_dest, if_ms_load, ms_wdata, ms_csr_write, ms_csr_num, ms_csr} = ms_to_ds_bus;
 
 assign br_taken = ((inst_beq && rj_eq_rd) || (inst_bne && !rj_eq_rd) 
                    || (inst_blt && signed_rj_less_rkd) || (inst_bltu && unsigned_rj_less_rkd)
@@ -483,13 +489,15 @@ assign br_taken = ((inst_beq && rj_eq_rd) || (inst_bne && !rj_eq_rd)
                    || inst_jirl || inst_bl || inst_b) && ds_valid;
 
 wire br_taken_cancel;
-//assign br_taken_cancel = (inst_beq || inst_bne || inst_jirl || inst_bl || inst_b) && ds_valid;
+//当译码级是跳转指令，且与前面的load指令有数据冲突时，需要拉高br_stall令取指暂时阻塞
+assign br_stall = (inst_beq || inst_bne || inst_bl || inst_b || inst_blt
+                || inst_bge || inst_bgeu || inst_bltu) && 
+                ((es_valid && if_es_load && (ex_crush1 || ex_crush2)) || (~ms_to_ws_valid && ms_valid && if_ms_load && (mem_crush1 || mem_crush2)) || csr_crush);
 
 assign br_target = (inst_beq || inst_bne || inst_bl || inst_b || inst_blt 
                              || inst_bge || inst_bltu || inst_bgeu) ? (ds_pc + br_offs) :   
                                                    /*inst_jirl*/ (rj_value + jirl_offs); 
-
-assign br_bus = {br_taken_cancel,br_taken,br_target};           
+assign br_bus = {br_taken_cancel, br_stall, br_taken, br_target};           
 
 //forward deliver
 wire [31:0] forward_rdata1;
@@ -631,15 +639,18 @@ wire Need_Block;    //ex_crush & es_res_from_mem
 
 wire ex_crush1;
 wire ex_crush2;
-assign Need_Block = (((ex_crush1 || ex_crush2) && es_res_from_mem) || csr_crush) && ~ertn_flush && ~wb_ex && ~has_int;
-
-assign ex_crush1 = (es_we && es_dest!=0) && (if_read_addr1 && rf_raddr1==es_dest);
-assign ex_crush2 = (es_we && es_dest!=0) && (if_read_addr2 && rf_raddr2==es_dest);
+//assign Need_Block = (((ex_crush1 || ex_crush2) && es_res_from_mem) || csr_crush) && ~ertn_flush && ~wb_ex && ~has_int;
+assign Need_Block = ( (if_es_load && (ex_crush1 || ex_crush2)) || (~ms_to_ws_valid && if_ms_load && (mem_crush1 || mem_crush2)) || csr_crush )
+                    && ~ertn_flush && ~wb_ex && ~has_int;
+//exp14 add es_valid
+assign ex_crush1 = es_valid && (es_we && es_dest!=0) && (if_read_addr1 && rf_raddr1==es_dest);
+assign ex_crush2 = es_valid && (es_we && es_dest!=0) && (if_read_addr2 && rf_raddr2==es_dest);
 
 wire mem_crush1;
 wire mem_crush2;
-assign mem_crush1 = (ms_we && ms_dest!=0) && (if_read_addr1 && rf_raddr1==ms_dest);
-assign mem_crush2 = (ms_we && ms_dest!=0) && (if_read_addr2 && rf_raddr2==ms_dest);
+//exp14 add ms_valid
+assign mem_crush1 = ms_valid && (ms_we && ms_dest!=0) && (if_read_addr1 && rf_raddr1==ms_dest);
+assign mem_crush2 = ms_valid && (ms_we && ms_dest!=0) && (if_read_addr2 && rf_raddr2==ms_dest);
 
 wire wb_crush1;
 wire wb_crush2;
@@ -647,7 +658,8 @@ assign wb_crush1 = (rf_we && rf_waddr!=0) && (if_read_addr1 && rf_raddr1==rf_wad
 assign wb_crush2 = (rf_we && rf_waddr!=0) && (if_read_addr2 && rf_raddr2==rf_waddr);
 
 wire csr_crush;
-assign csr_crush = (es_csr && (ex_crush1 || ex_crush2)) || (ms_csr && (mem_crush1 || mem_crush2)); 
+assign csr_crush = ds_valid && ((es_valid && es_csr && (ex_crush1 || ex_crush2)) || (ms_valid && ms_csr && (mem_crush1 || mem_crush2)));
+
 
 assign forward_rdata1 = ex_crush1? es_wdata : mem_crush1? ms_wdata : wb_crush1? rf_wdata : rf_rdata1;
 assign forward_rdata2 = ex_crush2? es_wdata : mem_crush2? ms_wdata : wb_crush2? rf_wdata : rf_rdata2;

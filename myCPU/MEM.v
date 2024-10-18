@@ -19,13 +19,13 @@ module stage4_MEM(
     output [`WIDTH_MS_TO_DS_BUS-1:0] ms_to_ds_bus,
 
     output if_ms_has_int,
-    
+
+    input        data_sram_data_ok,
     input [31:0] data_sram_rdata
 );
 
 /*-----------------------接收es_to_ms_bus----------------*/
 /*
-
 assign es_to_ms_bus[31:0] = es_pc;
 assign es_to_ms_bus[32:32] = es_gr_we;
 assign es_to_ms_bus[33:33] = es_res_from_mem;
@@ -33,7 +33,7 @@ assign es_to_ms_bus[38:34] = es_dest;
 assign es_to_ms_bus[70:39] = es_cal_result;
 assign es_to_ms_bus[72:71] = es_unaligned_addr;
 assign es_to_ms_bus[75:73] = es_ld_op; 
-//task12
+
 assign es_to_ms_bus[89:76] = es_csr_num;
 assign es_to_ms_bus[121:90] = es_csr_wmask;
 assign es_to_ms_bus[122:122] = es_csr_write;
@@ -45,11 +45,15 @@ assign es_csr_wvalue = es_rkd_value;
 assign es_to_ms_bus[156:125] = es_csr_wvalue;
 assign es_to_ms_bus[157:157] = es_ex_syscall;
 assign es_to_ms_bus[172:158] = es_code;
-//exp13
+
 assign es_to_ms_bus[173:173] = es_exc_ADEF;
 assign es_to_ms_bus[174:174] = es_exc_INE;
 assign es_to_ms_bus[175:175] = es_exc_ALE;
 assign es_to_ms_bus[176:176] = es_exc_break;
+assign es_to_ms_bus[177:177] = es_has_int;
+assign es_to_ms_bus[209:178] = es_vaddr;
+
+assign es_to_ms_bus[210:210] = es_mem_we;
 */
 
 wire [31:0] ms_pc;
@@ -74,6 +78,7 @@ wire ms_exc_ALE;
 wire ms_exc_break;
 wire ms_has_int;
 wire [31:0] ms_vaddr;
+wire        ms_mem_we;
 
 reg [`WIDTH_ES_TO_MS_BUS-1:0] es_to_ms_bus_reg;
 always @(posedge clk)
@@ -87,8 +92,9 @@ always @(posedge clk)
         else
             es_to_ms_bus_reg <= 0;
     end 
-
-assign {ms_vaddr,ms_has_int,ms_exc_break,ms_exc_ALE,ms_exc_INE,ms_exc_ADEF,
+//exp14
+//加入ms_mem_we
+assign {ms_mem_we,ms_vaddr,ms_has_int,ms_exc_break,ms_exc_ALE,ms_exc_INE,ms_exc_ADEF,
         ms_code, ms_ex_syscall, ms_csr_wvalue, ms_csr, ms_ertn_flush, ms_csr_write, ms_csr_wmask, ms_csr_num,
         ms_ld_op,unaligned_addr,ms_alu_result, ms_dest, ms_res_from_mem,
         ms_gr_we, ms_pc} = es_to_ms_bus_reg;
@@ -135,7 +141,10 @@ assign ms_to_ws_bus[203:172] = ms_vaddr;
 /*--------------------------valid------------------------*/
 reg ms_valid;    
 wire ms_ready_go;
-assign ms_ready_go = 1'b1;
+//exp14
+//当是load指令时，需要等待数据握手
+//data_ok拉高时表示store已经写入数据 或 load已经取到数据，将ms_ready_go拉高
+assign ms_ready_go = if_ms_has_int ? 1'b1 : (ms_mem_we || ms_res_from_mem) ? data_sram_data_ok : 1'b1;
 assign ms_allow_in = !ms_valid || ms_ready_go && ws_allow_in;
 assign ms_to_ws_valid = (ms_valid && ms_ready_go) & ~ertn_flush & ~wb_ex;
 
@@ -147,16 +156,18 @@ always @(posedge clk)
             ms_valid <= es_to_ms_valid;
     end
 
-/*-------------------------------------------------------*/
 
-/*--------------------ms_to_ds_bus-------------------*/
+/*--------------------deliver ms_to_ds_bus-------------------*/
+
 //task12 add ms_csr_write, ms_csr_num
-assign ms_to_ds_bus = {ms_gr_we,ms_dest,ms_final_result,
+
+wire if_ms_load;
+assign if_ms_load = ms_res_from_mem;
+assign ms_to_ds_bus = {ms_to_ws_valid,ms_valid,ms_gr_we,ms_dest,if_ms_load,ms_final_result,
                        ms_csr_write, ms_csr_num, ms_csr};
 
-/*-------------------------------------------------------*/
-
 /*--------------------deliver if_ms_has_int to es------------------*/
+
 //this signal is for helping ex_stage to judge if it should cancel inst_store due to exception
 // in task 12 we just consider syscall
 assign if_ms_has_int = ms_ex_syscall | ms_exc_ADEF | ms_exc_INE | ms_exc_ALE | ms_exc_break | ms_ertn_flush;
