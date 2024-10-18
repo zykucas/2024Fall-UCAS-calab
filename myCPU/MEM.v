@@ -89,8 +89,8 @@ always @(posedge clk)
             es_to_ms_bus_reg <= 0;
         else if(es_to_ms_valid && ms_allow_in)
             es_to_ms_bus_reg <= es_to_ms_bus;
-        else
-            es_to_ms_bus_reg <= 0;
+        //else
+          //  es_to_ms_bus_reg <= 0;
     end 
 //exp14
 //加入ms_mem_we

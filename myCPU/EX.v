@@ -90,10 +90,8 @@ always @(posedge clk)
             ds_to_es_bus_reg <= 0;
         else if(ds_to_es_valid && es_allow_in)
             ds_to_es_bus_reg <= ds_to_es_bus;
-        else if(ds_to_es_valid)
-            ds_to_es_bus_reg <= ds_to_es_bus_reg; 
-        else
-            ds_to_es_bus_reg <= 0;
+        //else if(es_need_wait_div)        
+          //  ds_to_es_bus_reg <= ds_to_es_bus_reg;
     end
     
     
@@ -318,7 +316,7 @@ assign es_ready_go = if_es_has_int ? 1'b1 :
                     (es_mem_we || es_res_from_mem) ? (data_sram_req && data_sram_addr_ok) : 
                     (!es_div_op[0] | (current_state==OUT_WAIT & out_valid | current_state==UOUT_WAIT & out_u_valid)) ;//不确定是否有逻辑问题
 
-assign es_allow_in = (!es_valid || es_ready_go) && ms_allow_in &&
+assign es_allow_in = !es_valid || es_ready_go && ms_allow_in &&
      (current_state == EXE | current_state==OUT_WAIT & out_valid |
       current_state==UOUT_WAIT & out_u_valid);
 
@@ -360,9 +358,9 @@ assign data_sram_size = es_mem_we ?
                          es_st_op[2] ? 2'b01 : 2'b00)
                         :
                         es_res_from_mem ?
-                        (es_ld_op[0] ? 2'b10 :  //ld_w
-                        (es_ld_op[1] | es_ld_op[2]) ? 2'b00 :  //ld_b. ld_bu
-                        (es_ld_op[3] | es_ld_op[4]) ? 2'b01 : 2'b00)
+                        ((es_ld_op == 0) ? 2'b10 :  //ld_w
+                         es_ld_op[0] ? 2'b00 :  //ld_b. ld_bu
+                         es_ld_op[1] ? 2'b01 : 2'b00) //ld_h, ld_hu
                         :
                         2'b00;   
 assign data_sram_wstrb = es_st_op[0] ? 4'b1111 :

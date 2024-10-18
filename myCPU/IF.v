@@ -185,7 +185,7 @@ always @(posedge clk)
     begin
         if(reset)
             fetch_pc <= 32'h1BFFFFFC;
-        else if(pre_if_to_fs_valid && ds_allow_in)
+        else if(pre_if_to_fs_valid && fs_allow_in)
             fetch_pc <= next_pc;
     end
 

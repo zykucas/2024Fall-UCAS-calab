@@ -198,7 +198,7 @@ stage2_ID decode(
     .br_bus             (br_bus),
 
     .es_to_ds_bus       (es_to_ds_bus),
-    .ms_to_ds_bus       (ms_to_ds_bus)
+    .ms_to_ds_bus       (ms_to_ds_bus),
     .data_sram_data_ok  (data_sram_data_ok)
 );
 
