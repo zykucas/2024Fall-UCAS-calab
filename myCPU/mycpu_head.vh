@@ -1,8 +1,8 @@
 `define WIDTH_BR_BUS       35
 `define WIDTH_FS_TO_DS_BUS 65
 `define WIDTH_DS_TO_ES_BUS 233
-`define WIDTH_ES_TO_MS_BUS 211 
-`define WIDTH_MS_TO_WS_BUS 204 
+`define WIDTH_ES_TO_MS_BUS 211
+`define WIDTH_MS_TO_WS_BUS 204
 `define WIDTH_WS_TO_DS_BUS 55
 `define WIDTH_ES_TO_DS_BUS 56
 `define WIDTH_MS_TO_DS_BUS 57

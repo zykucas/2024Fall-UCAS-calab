@@ -151,7 +151,7 @@ wire [31:0] seq_pc;     //PC in sequence
 assign seq_pc = fetch_pc + 4;
 wire [31:0] next_pc;    //nextpc from branch or sequence
 //exp14
-assign next_pc = if_keep_pc ? br_delay_reg : (has_int || wb_ex)? ex_entry : ertn_flush? ertn_pc : (br_taken && ~br_stall) ? br_target : seq_pc;
+assign next_pc = if_keep_pc ? br_delay_reg : wb_ex? ex_entry : ertn_flush? ertn_pc : (br_taken && ~br_stall) ? br_target : seq_pc;
 
 /*
 当出现异常入口pc、异常返回pc和跳转pc时，信号和pc可能只能维持一拍，
@@ -163,9 +163,9 @@ always @(posedge clk)
     begin
         if(reset)
             if_keep_pc <= 1'b0;
-        else if(inst_sram_addr_ok && ~deal_with_cancel && ~wb_ex && ~ertn_flush)//has_init???
+        else if(inst_sram_addr_ok && ~deal_with_cancel && ~wb_ex && ~ertn_flush)
             if_keep_pc <= 1'b0;
-        else if((br_taken && ~br_stall) || wb_ex || ertn_flush)//has_init???
+        else if((br_taken && ~br_stall) || wb_ex || ertn_flush)
             if_keep_pc <= 1'b1;
     end   
 
@@ -173,7 +173,7 @@ always @(posedge clk)
     begin
         if(reset)
             br_delay_reg <= 32'b0;
-        else if(wb_ex) //has_init ???
+        else if(wb_ex) 
             br_delay_reg <= ex_entry;
         else if(ertn_flush)
             br_delay_reg <= ertn_pc;
@@ -222,5 +222,6 @@ assign fs_exc_ADEF = ~inst_sram_wr && (fetch_pc[1] | fetch_pc[0]); //next_pc???
 assign fs_to_ds_bus[31:0] = fetch_pc;
 assign fs_to_ds_bus[63:32] = (temp_inst == 0) ? fetch_inst : temp_inst;
 assign fs_to_ds_bus[64:64] = fs_exc_ADEF;
+
 
 endmodule

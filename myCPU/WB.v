@@ -107,6 +107,7 @@ assign ertn_flush = ws_ertn_flush;
 
 assign wb_ex = ws_ex_syscall | ws_exc_break | ws_exc_ALE | ws_exc_INE | ws_exc_ADEF | ws_has_int ;
 // assign wb_ex = ws_ex_syscall || ws_ex_xxx || ......
+
 assign wb_pc = ws_pc;
 
 /*
@@ -163,8 +164,37 @@ always @(posedge clk)
 /*-------------------------------------------------------*/
 
 /*--------------------------debug reference--------------*/
+reg [31:0] debug_wb_pc_reg;
+reg [31:0] debug_wb_rf_wdata_reg;
+reg [4:0] debug_wb_rf_wnum_reg;
+always @(posedge clk)
+    begin
+        if(reset)
+            debug_wb_pc_reg <= 0;
+        else if(ws_we)
+            debug_wb_pc_reg <= ws_pc;
+    end
+
+always @(posedge clk)
+    begin
+        if(reset)
+            debug_wb_rf_wdata_reg <= 0;
+        else if(ws_we)
+            debug_wb_rf_wdata_reg <= ws_wdata;
+    end
+
+always @(posedge clk)
+    begin
+        if(reset)
+            debug_wb_rf_wnum_reg <= 0;
+        else if(ws_we)
+            debug_wb_rf_wnum_reg <= ws_dest;
+    end
+
+wire all_same = (debug_wb_pc_reg == ws_pc) && (debug_wb_rf_wdata_reg == ws_wdata) && (debug_wb_rf_wnum_reg == ws_dest);
+
 assign debug_wb_pc       = ws_pc;
-assign debug_wb_rf_we   = {4{ws_we}};
+assign debug_wb_rf_we   = {4{ws_we & !all_same}};
 assign debug_wb_rf_wnum  = ws_dest;
 assign debug_wb_rf_wdata = ws_wdata;
 /*-------------------------------------------------------*/

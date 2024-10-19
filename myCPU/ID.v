@@ -448,7 +448,8 @@ always @(posedge clk)
         else if(fs_to_ds_valid && ds_allow_in)         
             fs_to_ds_bus_reg <= fs_to_ds_bus;
     end
-assign {ds_exc_ADEF,inst,ds_pc} = fs_to_ds_bus_reg;         //_reg;
+assign {ds_exc_ADEF,inst,ds_pc} = fs_to_ds_bus_reg[64:0];         //_reg;
+
 wire rf_we;
 wire [4:0] rf_waddr;
 wire [31:0] rf_wdata;
@@ -614,6 +615,7 @@ assign ds_to_es_bus[229:229] = inst_break;
 assign ds_to_es_bus[230:230] = inst_rdcntvh_w;
 assign ds_to_es_bus[231:231] = inst_rdcntvl_w;
 assign ds_to_es_bus[232:232] = has_int;
+
 
 /*----------------------------------------------------------------*/
 
