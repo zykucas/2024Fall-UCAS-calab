@@ -97,7 +97,7 @@ always @(posedge clk)
     
     
 always @(posedge clk)begin
-    if(reset)
+    if(reset || (ds_to_es_valid && es_allow_in))
         current_state <= EXE ;
     else
         current_state <= next_state;              
@@ -298,8 +298,8 @@ wire no_exception;
 assign no_exception = ~if_es_has_int && ~if_ms_has_int && ~wb_ex && ~es_has_int;
 wire if_es_has_int;
 assign if_es_has_int = es_ex_syscall || es_ertn_flush || es_exc_ADEF || es_exc_ALE || es_exc_INE || es_exc_break || es_has_int || wb_ex;
-// 当MS级的allowin为1时再发出req，是为了保证req与addr_ok握手时allowin也是拉高的
-// 当es流水级或ms,ws有异常时阻止访存，为了维护精确异常。
+// 当MS级的allowin�?1时再发出req，是为了保证req与addr_ok握手时allowin也是拉高�?
+// 当es流水级或ms,ws有异常时阻止访存，为了维护精确异常�??
 assign data_sram_req = (ms_allow_in && no_exception) && (es_res_from_mem || es_mem_we) && es_valid;
 
 reg es_valid;
