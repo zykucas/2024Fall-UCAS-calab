@@ -23,7 +23,11 @@ module stage2_ID(
 
     input [`WIDTH_ES_TO_DS_BUS-1:0] es_to_ds_bus,
     input [`WIDTH_MS_TO_WS_BUS-1:0] ms_to_ds_bus,
-    input data_sram_data_ok
+    input data_sram_data_ok,
+
+    //tlb new add
+    output tlb_zombie,
+    input tlb_reflush
 );
 
 wire [31:0] inst;
@@ -127,18 +131,29 @@ wire        inst_rdcntvh_w;
 wire        inst_rdcntid;
 wire        inst_break;
 
-wire        ds_exc_INE;
-assign      ds_exc_INE = ~(inst_add_w | inst_sub_w | inst_slt | inst_sltu 
-            | inst_nor | inst_and | inst_or | inst_xor | inst_slli_w 
-            | inst_srli_w | inst_srai_w | inst_addi_w | inst_ld_w | inst_st_w 
-            | inst_jirl | inst_b | inst_bl | inst_beq | inst_bne | inst_lu12i_w 
-            | inst_slti | inst_sltiu | inst_andi | inst_ori | inst_xori | inst_sll_w 
-            | inst_srl_w | inst_sra_w | inst_pcaddu12i | inst_mul_w | inst_mulh_w 
-            | inst_mulh_wu | inst_div_w | inst_div_wu | inst_mod_w | inst_mod_wu 
-            | inst_blt | inst_bge | inst_bltu | inst_bgeu | inst_st_b | inst_st_h 
-            | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu
-            | inst_csrrd | inst_csrwr | inst_csrxchg | inst_ertn | inst_syscall
-            | inst_rdcntvl_w | inst_rdcntvh_w | inst_rdcntid | inst_break) && (ds_pc != 32'b0) ;
+//tlb inst
+wire        inst_tlbsrch;
+wire        inst_tlbrd;
+wire        inst_tlbwr;
+wire        inst_tlbfill;
+wire        inst_invtlb;
+wire [4:0]  inst_invtlb_op;
+
+wire        ds_ex_INE;
+assign ds_ex_INE   =     (~(inst_add_w | inst_sub_w | inst_slt | inst_sltu | inst_nor | inst_and |
+                         inst_or | inst_xor | inst_slli_w | inst_srli_w | inst_srai_w |
+                         inst_addi_w | inst_ld_w | inst_st_w | inst_jirl | inst_b |
+                         inst_bl | inst_beq | inst_bne | inst_lu12i_w | inst_slti |
+                         inst_sltiu | inst_andi | inst_ori | inst_xori | inst_sll_w |
+                         inst_srl_w | inst_sra_w | inst_pcaddu12i | inst_mul_w | inst_mulh_w |
+                         inst_mulh_wu | inst_div_w | inst_div_wu | inst_mod_w | inst_mod_wu |
+                         inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu | inst_st_b |
+                         inst_st_h | inst_blt | inst_bge | inst_bltu | inst_bgeu |
+                         inst_csrrd | inst_csrwr | inst_csrxchg | inst_ertn | inst_syscall |
+                         inst_rdcntvl_w | inst_rdcntvh_w | inst_rdcntid | inst_break |
+                         inst_tlbsrch | inst_tlbrd | inst_tlbwr | inst_tlbfill | inst_invtlb) || (inst_invtlb && 
+                         ~(inst_invtlb_op == 5'h6 || inst_invtlb_op == 5'h5 || inst_invtlb_op == 5'h4 || inst_invtlb_op[4:2] == 3'h0))) 
+                         && (ds_pc != 32'b0) && (~ds_ex_ADEF);
 
 
 
@@ -396,6 +411,25 @@ assign inst_rdcntvh_w = op_31_26_d[6'h0] & op_25_22_d[4'h0] & op_21_20_d[2'h0] &
 */
 assign inst_break = op_31_26_d[6'h0] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h14];
 
+//tlb add inst
+
+assign inst_tlbsrch = op_31_26_d[6'h1] & op_25_22_d[4'h9] &
+                      op_21_20_d[2'h0] & op_19_15_d[5'h10] & (rk==5'b01010);
+
+assign inst_tlbrd =   op_31_26_d[6'h1] & op_25_22_d[4'h9] &
+                      op_21_20_d[2'h0] & op_19_15_d[5'h10] & (rk==5'b01011);
+
+assign inst_tlbwr =   op_31_26_d[6'h1] & op_25_22_d[4'h9] &
+                      op_21_20_d[2'h0] & op_19_15_d[5'h10] & (rk==5'b01100);
+
+assign inst_tlbfill = op_31_26_d[6'h1] & op_25_22_d[4'h9] &
+                      op_21_20_d[2'h0] & op_19_15_d[5'h10] & (rk==5'b01101);
+
+assign inst_invtlb =  op_31_26_d[6'h1] & op_25_22_d[4'h9] &
+                      op_21_20_d[2'h0] & op_19_15_d[5'h13];
+
+assign inst_invtlb_op = inst[4:0];
+
 
 assign need_ui5   =  inst_slli_w | inst_srli_w | inst_srai_w;  
 assign need_si12  =  inst_addi_w | inst_ld_w | inst_st_w | inst_slti | inst_sltiu | inst_st_b | inst_st_h
@@ -433,22 +467,35 @@ assign signed_rj_less_rkd = (rj_value[31] & ~rkd_value[31])
                                | ((rj_value[31] ~^ rkd_value[31]) & rj_rkd_adder_result[31]);
 assign unsigned_rj_less_rkd = ~cout;  
 
-wire [31:0] ds_pc;
-//ADEF
-wire ds_exc_ADEF;
+/*
+assign fs_to_ds_bus[31:0] = fetch_pc;
+assign fs_to_ds_bus[63:32] = (temp_inst == 0) ? fetch_inst : temp_inst;
+assign fs_to_ds_bus[64:64] = fs_ex_ADEF;
+assign fs_to_ds_bus[65:65] = tlb_zombie;
+assign fs_to_ds_bus[66:66] = fs_ex_fetch_tlb_refill;
+assign fs_to_ds_bus[67:67] = fs_ex_inst_invalid;
+assign fs_to_ds_bus[68:68] = fs_ex_fetch_plv_invalid;
+*/
 
-//fs_to_ds_bus = {fetch_inst,fetch_pc}
+wire [31:0] ds_pc;
+wire ds_ex_ADEF;
+wire ds_tlb_zombie;
+wire ds_ex_fetch_tlb_refill;
+wire ds_ex_inst_invalid;
+wire ds_ex_fetch_plv_invalid;
+
 reg [`WIDTH_FS_TO_DS_BUS-1:0] fs_to_ds_bus_reg;
 always @(posedge clk)
     begin
         if(reset)
             fs_to_ds_bus_reg <= 0;
-        else if(ertn_flush || wb_ex)
+        else if(ertn_flush || wb_ex || tlb_reflush)
             fs_to_ds_bus_reg <= 0;
         else if(fs_to_ds_valid && ds_allow_in)         
             fs_to_ds_bus_reg <= fs_to_ds_bus;
     end
-assign {ds_exc_ADEF,inst,ds_pc} = fs_to_ds_bus_reg[64:0];         //_reg;
+assign {ds_ex_fetch_plv_invalid, ds_ex_inst_invalid, ds_ex_fetch_tlb_refill,
+        ds_tlb_zombie, ds_ex_ADEF, inst, ds_pc} = fs_to_ds_bus_reg;            
 
 wire rf_we;
 wire [4:0] rf_waddr;
@@ -514,9 +561,10 @@ assign imm = src2_is_4 ? 32'h4                      :
              
 assign dst_is_r1     = inst_bl;    
 assign dest = inst_rdcntid ? rj : dst_is_r1 ? 5'd1 : rd;
-assign gr_we         = ~inst_st_w & ~inst_st_b & ~inst_st_h & ~inst_beq 
-                & ~inst_bne & ~inst_b & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu 
-                & ~inst_syscall & ~inst_ertn& ~inst_break & ~ds_exc_ADEF & ~ds_exc_INE ;    //ADEF no need write reg
+assign gr_we         = ~inst_st_w & ~inst_st_b & ~inst_st_h &~inst_beq & ~inst_bne & ~inst_b & 
+                       ~inst_blt & ~inst_bltu & ~inst_bge & ~inst_bgeu & ~inst_ertn & ~inst_break & ~ds_ex_INE & ~ds_ex_ADEF &
+                       ~ds_ex_syscall & ~inst_tlbsrch & ~inst_tlbrd & ~inst_tlbwr & ~inst_tlbfill & ~inst_invtlb &
+                       ~ds_ex_fetch_plv_invalid & ~ds_ex_fetch_tlb_refill & ~ds_ex_inst_invalid;   
 assign mem_we        = inst_st_w | inst_st_b | inst_st_h;
 
 assign alu_op[ 0] = inst_add_w | inst_addi_w | inst_ld_w | inst_st_w
@@ -609,13 +657,25 @@ assign ds_to_es_bus[210:210] = ds_csr;
 assign ds_to_es_bus[211:211] = ds_ex_syscall;
 assign ds_to_es_bus[226:212] = ds_code;
 //exp13
-assign ds_to_es_bus[227:227] = ds_exc_ADEF;
-assign ds_to_es_bus[228:228] = ds_exc_INE;
+assign ds_to_es_bus[227:227] = ds_ex_ADEF;
+assign ds_to_es_bus[228:228] = ds_ex_INE;
 assign ds_to_es_bus[229:229] = inst_break;
 assign ds_to_es_bus[230:230] = inst_rdcntvh_w;
 assign ds_to_es_bus[231:231] = inst_rdcntvl_w;
 assign ds_to_es_bus[232:232] = has_int;
+//task tlb add
+assign ds_to_es_bus[233:233] = inst_tlbsrch;
+assign ds_to_es_bus[234:234] = inst_tlbrd;
+assign ds_to_es_bus[235:235] = inst_tlbwr;
+assign ds_to_es_bus[236:236] = inst_tlbfill;
+assign ds_to_es_bus[237:237] = inst_invtlb;
+assign ds_to_es_bus[242:238] = inst_invtlb_op;
+assign ds_to_es_bus[243:243] = ds_tlb_zombie;
 
+//tlb exception
+assign ds_to_es_bus[244:244] = ds_ex_fetch_tlb_refill;
+assign ds_to_es_bus[245:245] = ds_ex_inst_invalid;
+assign ds_to_es_bus[246:246] = ds_ex_fetch_plv_invalid;
 
 /*----------------------------------------------------------------*/
 
@@ -729,6 +789,20 @@ regfile u_regfile(
     .waddr  (rf_waddr ),    
     .wdata  (rf_wdata )     
     );
+/*--------------------------tlb_zombie-----------------------------*/
 
+wire tlb_self_zombie;   
+assign tlb_self_zombie = ds_tlb_zombie;
+
+wire tlb_inst_zombie;   
+assign tlb_inst_zombie = inst_tlbwr | inst_tlbfill | inst_invtlb | inst_tlbrd;
+
+wire csr_inst_zombie;   
+assign csr_inst_zombie = (inst_csrwr | inst_csrxchg) && (ds_csr_num == `CSR_CRMD || 
+                        ds_csr_num == `CSR_DMW0 || ds_csr_num == `CSR_DMW1 || ds_csr_num == `CSR_ASID);
+
+assign tlb_zombie = 0;/*tlb_self_zombie | tlb_inst_zombie | csr_inst_zombie;*/
+
+/*----------------------------------------------------------------*/
 
 endmodule
