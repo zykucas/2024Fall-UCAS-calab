@@ -229,8 +229,8 @@ assign ms_to_ws_bus[237:237] = ms_ex_store_dirty;
 reg ms_valid;    
 wire ms_ready_go;
 //exp14
-//当是load指令时，�?要等待数据握�?
-//data_ok拉高时表示store已经写入数据 �? load已经取到数据，将ms_ready_go拉高
+//当是load指令时，需要等待数据握手
+//data_ok拉高时表示store已经写入数据 或 load已经取到数据，将ms_ready_go拉高
 assign ms_ready_go = if_ms_has_int ? 1'b1 : (ms_mem_we || ms_res_from_mem) ? data_sram_data_ok : 1'b1;
 assign ms_allow_in = !ms_valid || ms_ready_go && ws_allow_in;
 assign ms_to_ws_valid = (ms_valid && ms_ready_go) & ~ertn_flush & ~wb_ex & ~tlb_reflush;

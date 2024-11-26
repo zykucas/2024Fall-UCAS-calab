@@ -369,8 +369,6 @@ assign debug_wb_rf_we   = {4{ws_we}};
 assign debug_wb_rf_wnum  = ws_dest;
 assign debug_wb_rf_wdata = ws_wdata;
 /*-------------------------------------------------------*/
-
-/*--------------Some Others by Gu Chaoyang---------------*/
 assign tlbrd_tlbehi_vppn = r_vppn;
 assign tlbrd_tlbelo0_ppn = r_ppn0;
 assign tlbrd_tlbelo0_g   = r_g;

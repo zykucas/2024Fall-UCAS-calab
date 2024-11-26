@@ -5,17 +5,17 @@ module csr_reg(
 
     input [`WIDTH_CSR_NUM-1:0]     csr_num,           //寄存器号
 
-    input                         csr_re,            //读使�?
-    output             [31:0]     csr_rvalue,        //读数�?
+    input                         csr_re,            //读使能
+    output             [31:0]     csr_rvalue,        //读数据
     output             [31:0]     ertn_pc,
     output             [31:0]     ex_entry,
     output             [31:0]     ex_tlbentry,
 
-    input                         csr_we,            //写使�?
-    input              [31:0]     csr_wmask,         //写掩�?
-    input              [31:0]     csr_wvalue,        //写数�?
+    input                         csr_we,            //写使能
+    input              [31:0]     csr_wmask,         //写掩码
+    input              [31:0]     csr_wvalue,        //写数据
 
-    input                         wb_ex,             //写回级异�?
+    input                         wb_ex,             //写回级异常
     input              [31:0]     wb_pc,             //异常pc
     input                         ertn_flush,        //ertn指令执行有效信号
     input              [5:0]      wb_ecode,          //异常类型1级码
@@ -59,12 +59,12 @@ module csr_reg(
 
     //for tlbsrch
     input        inst_tlbsrch,
-    input        tlbsrch_got,        //tlbsrch 命中了表�?
+    input        tlbsrch_got,        //tlbsrch 命中了表项
     input [3:0]  tlbsrch_index,
 
     //for tlbrd
     input        inst_tlbrd,         
-    input        tlbrd_valid,        //tlbrd 指定位置是有效TLB�?
+    input        tlbrd_valid,        //tlbrd 指定位置是有效TLB表项
 
     input [18:0] tlbrd_tlbehi_vppn,
 
@@ -112,7 +112,7 @@ module csr_reg(
 );
 
 /*
-寄存器号�?
+寄存器号
 `define CSR_CRMD 0x0
 `define CSR_PRMD 0x1
 `define CSR_ECFG 0x4
@@ -140,8 +140,8 @@ CSR分区
 
 //当前特权等级
 /*
-2'b00: �?高特权级  2'b11：最低特权等�?
-触发特例时应将plv设为0，确保陷入后处于内核态最高特权等�?
+2'b00: 最高特权级  2'b11：最低特权等级
+触发特例时应将plv设为0，确保陷入后处于内核态最高特权等级
 当执行ERTN指令从例外处理程序返回时，讲CSR_PRMD[PPLV] --> CSR_CRMD[PLV]
 */
 reg [1:0] csr_crmd_plv;
@@ -163,9 +163,9 @@ assign crmd_plv = csr_crmd_plv;
 
 //当前全局中断使能
 /*
-1'b1：可中断    1'b0：屏蔽中�?
-当触发例外时，硬件置�?0，确保陷入后屏蔽中断
-例外处理程序决定重新�?启中断响应时，显示设1
+1'b1：可中断    1'b0：屏蔽中断
+当触发例外时，硬件置0，确保陷入后屏蔽中断
+例外处理程序决定重新启中断响应时，显示设1
 当执行ERTN指令从例外处理程序返回时，讲CSR_PRMD[IE] --> CSR_CRMD[IE]
 */
 reg csr_crmd_ie;
@@ -184,7 +184,7 @@ always @(posedge clk)
                         | ~csr_wmask[`CSR_CRMD_IE] & csr_crmd_ie;
     end
 
-//直接地址翻译使能 --> 初始化置�?1
+//直接地址翻译使能 --> 初始化置1
 reg csr_crmd_da;
 
 always @(posedge clk)
@@ -247,7 +247,7 @@ assign   crmd_datm  = csr_crmd_datm;
 
 /*---------------------------------------------------------------------*/
 
-/*--------------------------例外前模式信�? PRMD-------------------------*/
+/*--------------------------例外前模式信息 PRMD-------------------------*/
 
 reg [1:0] csr_prmd_pplv;
 reg csr_prmd_pie;
@@ -268,18 +268,18 @@ always @(posedge clk)
             end
     end
 
-//暂未使用�?
+//暂未使用
 reg [28:0] reg_prmd_zero;
 
 /*---------------------------------------------------------------------*/
 
 /*--------------------------例外控制 ECFG-------------------------------*/
 
-//控制各中断的�?部使能位
+//控制各中断的局部使能位
 /*
-1'b1：可中断    1'b0：屏蔽中�?
-�?10位局部中断使能位与CSR_ESTAT中IS[9:0]域记录的10个中断源�?�?对应
-12:11位局部中断使能位与CSR_ESTAT中IS[12:11]域记录的2个中断源�?�?对应
+1'b1：可中断    1'b0：屏蔽中断
+低10位局部中断使能位与CSR_ESTAT中IS[9:0]域记录的10个中断源一一对应
+12:11位局部中断使能位与CSR_ESTAT中IS[12:11]域记录的2个中断源一一对应
 */
 reg [12:0] csr_ecfg_lie;
 
@@ -298,18 +298,18 @@ always @(posedge clk)
         end
     end
 
-//暂未使用�?
+//暂未使用的
 reg [18:0] csr_ecfg_zero;
 
 /*---------------------------------------------------------------------*/
 
-/*--------------------------例外状�?? ESTAT-------------------------------*/
+/*--------------------------例外状态 ESTAT-------------------------------*/
 
-//2个软中断状�?�位�? 0�?1比特分别对应SWI0 �? SWI1
-//8个硬中断状�?�位�? 2�?9比特分贝对应HWI0 �? HWI7
+//2个软中断状态位， 0和1比特分别对应SWI0 和 SWI1
+//8个硬中断状态位， 2至9比特分贝对应HWI0 到 HWI7
 //1个保留域
-//�?11位对应定时器中断TI的状态位
-//�?12位对应核间中�?
+//第11位对应定时器中断TI的状态位
+//第12位对应核间中断
 reg [12:0] csr_estat_is;
 always @(posedge clk)
     begin
@@ -323,7 +323,7 @@ always @(posedge clk)
         //硬中断位 -- R
         csr_estat_is[`CSR_ESTAT_IS_HARD] <= hw_int_in[7:0];
 
-        //保留�?
+        //保留位
         csr_estat_is[`CSR_ESTAT_IS_LEFT1] <= 1'b0;
 
         //时钟中断 -- R 但是写CSR_TICLR_CLR可改变CSR_ESTAT_IS_TI
@@ -338,10 +338,10 @@ always @(posedge clk)
         csr_estat_is[`CSR_ESTAT_IS_IPI] <= ipi_int_in;
     end
 
-//保留�?
+//保留位
 reg [2:0] csr_estat_left;
 
-//中断类型1�?2级编�?
+//中断类型1级2级编码
 reg [5:0] csr_estat_ecode;
 reg [8:0] csr_estat_esubcode;
 assign stat_ecode = csr_estat_ecode;
@@ -354,14 +354,14 @@ always @(posedge clk)
             end
     end
 
-//暂未使用�?
+//暂未使用的
 reg csr_estat_zero;
 
 /*---------------------------------------------------------------------*/
 
 /*-----------------------例外返回地址 ERA-------------------------------*/
 
-//触发例外的指令PC将被记录在EPC寄存�?
+//触发例外的指令PC将被记录在EPC寄存器
 reg [31:0] csr_era_pc;
 
 always @(posedge clk)
@@ -375,16 +375,16 @@ always @(posedge clk)
 
 /*---------------------------------------------------------------------*/
 
-/*-----------------------出错虚地�? BADV-------------------------------*/
+/*-----------------------出错虚地址 BADV-------------------------------*/
 
 //触发地址错误相关例外时，记录出错的虚地址
 reg [31:0] csr_badv_vaddr;
 
 wire wb_ex_addr_err;
 /*
-ECODE_ADEF: 取�?�地�?错例�?
-ECODE_ADEM：访存指令地�?错例�?
-ECODE_ALE：地�?非对齐例�?
+ECODE_ADEF: 取值地址错例外
+ECODE_ADEM：访存指令地址错例外
+ECODE_ALE：地址非对齐例外
 */
 assign wb_ex_addr_err = (wb_ecode == `ECODE_ADE) || (wb_ecode == `ECODE_ALE) || 
                         (wb_ecode == `ECODE_TLBR) || (wb_ecode == `ECODE_PIL) ||
@@ -405,7 +405,7 @@ always @(posedge clk)
 
 /*-----------------------例外入口地址 EENTRY-------------------------------*/
 
-//EENTRY用于配置除TLB充填例外之外的例外和中断的入口地�?
+//EENTRY用于配置除TLB充填例外之外的例外和中断的入口地址
 //只能由CSR指令更新
 reg [5:0] csr_eentry_zero;
 reg [25:0] csr_eentry_va;
@@ -424,7 +424,7 @@ always @(posedge clk)
     end
 /*---------------------------------------------------------------------*/
 
-/*-----------------------临时寄存�? SAVE0-3-------------------------------*/
+/*-----------------------临时寄存器 SAVE0-3-------------------------------*/
 
 reg [31:0] csr_save0_data;
 reg [31:0] csr_save1_data;
@@ -470,11 +470,11 @@ always @(posedge clk)
 
 /*-----------------------定时器配置寄存器 TCFG-------------------------------*/
 
-//定时器使能位，en�?1时定时器才会进行倒计时自�?，并在减�?0时置起定时中断信�?
+//定时器使能位，en为1时定时器才会进行倒计时自检，并在减为0时置起定时中断信号
 reg csr_tcfg_en;
 //定时器循环模式控制位，为1时会循环
 reg csr_tcfg_periodic;
-//定时器�?�计时自减计数的初始�?
+//定时器倒计时自减计数的初始值
 reg [29:0] csr_tcfg_initval;
 
 always @(posedge clk)
@@ -496,7 +496,7 @@ always @(posedge clk)
 
 /*---------------------------------------------------------------------*/
 
-/*-----------------------TVAL的TimeVal�?-------------------------------*/
+/*-----------------------TVAL的TimeVal域-------------------------------*/
 
 wire [31:0] tcfg_cur_value;
 wire [31:0] tcfg_next_value;
@@ -504,24 +504,25 @@ wire [31:0] csr_tval;
 reg  [31:0] timer_cnt;
 
 /*
-这里用两个wire类型信号定义cur_tcfg �? next_tcfg
-是为了能在当软件�?启timer的使能的同时发起timer_cnt的更新操�?
-即在下面的时序�?�辑中的
+这里用两个wire类型信号定义cur_tcfg 和 next_tcfg
+是为了能在当软件开启timer的使能的同时发起timer_cnt的更新操作
+即在下面的时序逻辑中的
         else if(csr_we && csr_num == `CSR_TCFG && tcfg_next_value[`CSR_TCFG_EN])
             timer_cnt <= {tcfg_next_value[`CSR_TCFG_INITVAL], 2'b0};
-        将此时写入的timer配置寄存器的定时器初始�?�更新到timer_cnt�?
+        将此时写入的timer配置寄存器的定时器初始值更新到timer_cnt中
 
-因为是在软件写TCFG的同时更新timer�?
-�?以要看当前写入TCFG寄存器的�?(next_value)，�?�不是用cur_value
+因为是在软件写TCFG的同时更新timer，
+所以要看当前写入TCFG寄存器的值(next_value)，而不是用cur_value
 */
 
 /*
-当timer_cnt减到�?0且定时器不是周期性工作模式情况下�?
-timer_cnt继续�?1变成32'hffffffff,之后应当停止即使�?
-�?以timer_cnt自减的条件包含timer_cnt!=32'hffffffff
+当timer_cnt减到全0且定时器不是周期性工作模式情况下。
+timer_cnt继续减1变成32'hffffffff,之后应当停止即使，
+所以timer_cnt自减的条件包含timer_cnt!=32'hffffffff
 
 周期性工作模式下，就重置为{csr_tcfg_initval, 2'b0}
 */
+
 
 assign tcfg_cur_value = {csr_tcfg_initval, csr_tcfg_periodic, csr_tcfg_en};
 assign tcfg_next_value = csr_wmask[31:0] & csr_wvalue[31:0]
@@ -547,18 +548,18 @@ assign csr_tval = timer_cnt[31:0];
 
 /*---------------------------------------------------------------------*/
 
-/*-----------------------TICLR的CLR�?----------------------------------*/
+/*-----------------------TICLR的CLR域 ----------------------------------*/
 
-//软件通过对TICLR寄存器位0�?1来清除定时器置起的定时中断信�?
-//CLR域的读写属�?�位W1,意味�?软件对它�?1才会产生执行效果，执行效�?
-//具体体现在TCFG_EN上，但CLR域的值实际上不变，恒�?0
+//软件通过对TICLR寄存器位0写1来清除定时器置起的定时中断信号
+//CLR域的读写属性位W1,意味着软件对它写1才会产生执行效果，执行效果
+//具体体现在TCFG_EN上，但CLR域的值实际上不变，恒为0
 wire csr_ticlr_clr;
 assign csr_ticlr_clr = 1'b0;
 
 /*---------------------------------------------------------------------*/
 
 
-/*---------------------------TLB相关寄存�?------------------------------*/
+/*---------------------------TLB相关寄存器------------------------------*/
 
 //1:TLBIDX
 reg [3:0]   TLBIDX_INDEX;
@@ -586,7 +587,7 @@ always @(posedge clk)
             begin
                 if(tlbsrch_got)
                     begin
-                        //tlbsrch命中表项，则�?要置index和ne=0
+                        //tlbsrch命中表项，则需要置index和ne=0
                         TLBIDX_INDEX <= tlbsrch_index;
                         TLBIDX_NE    <= 1'b0;
                     end
@@ -615,13 +616,13 @@ assign tlbidx_ps = TLBIDX_PS;
 assign tlbidx_ne = TLBIDX_NE;
 
 /* 例外种类
-PIL     load操作页无效例�?
-PIS     store操作页无效例�?
-PIF     取指操作页无效例�?
-PME     页修改例�?
+PIL     load操作页无效例外
+PIS     store操作页无效例外
+PIF     取指操作页无效例外
+PME     页修改例外
 PPI     页特权等级不合规例外
-ADEF    取指地址错例�?
-ALE     地址非对齐例�?
+ADEF    取指地址错例外
+ALE     地址非对齐例外
 TLBR    TLB重填例外
 */
 
@@ -645,7 +646,7 @@ always @(posedge clk)
                     //若tlbrd查找的TLB表项有效
                     TLBEHI_VPPN <= tlbrd_tlbehi_vppn;
                 else
-                    //若无效，则需�?0
+                    //若无效，则需置0
                     TLBEHI_VPPN <= 0;
             end
         else if(wb_ex && ex_elbehi)

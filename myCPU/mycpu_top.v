@@ -56,52 +56,52 @@ module mycpu_top(
     input           aclk,
     input           aresetn,
 
-    //ar ������ͨ��
+     //ar 读请求通道
 
-    output [3:0]    arid,           //������ID��                           ȡָ0��ȡ��1        
-    output [31:0]   araddr,         //������ĵ�ַ                          
-    output [7:0]    arlen,          //�����䳤��(���ݴ�������)            �̶�Ϊ0
-    output [2:0]    arsize,         //�������С(���ݴ���ÿ�ĵ��ֽ���)     
-    output [1:0]    arburst,        //��������                             �̶�Ϊ2'b01
-    output [1:0]    arlock,         //ԭ����                               
-    output [3:0]    arcache,        //CACHE����
-    output [2:0]    arprot,         //��������
-    output          arvalid,        //�������ַ����(�������ַ��Ч)
-    input           arready,        //�������ַ����(slave��׼���ý��յ�ַ)
+    output [3:0]    arid,           //读请求ID号                           取指0，取数1        
+    output [31:0]   araddr,         //读请求的地址                          
+    output [7:0]    arlen,          //请求传输长度(数据传输拍数)            固定为0
+    output [2:0]    arsize,         //请求传输大小(数据传输每拍的字节数)     
+    output [1:0]    arburst,        //传输类型                             固定为2'b01
+    output [1:0]    arlock,         //原子锁                               
+    output [3:0]    arcache,        //CACHE属性
+    output [2:0]    arprot,         //保护属性
+    output          arvalid,        //读请求地址握手(读请求地址有效)
+    input           arready,        //读请求地址握手(slave端准备好接收地址)
 
-    //r  ����Ӧͨ��
-    input  [3:0]    rid,            //�������ID�ţ�ͬһ�����rid=arid
-    input  [31:0]   rdata,          //������Ķ�������
-    input  [1:0]    rresp,          //���ζ������Ƿ�ɹ����(�ɺ���)
-    input           rlast,          //���ζ��������һ��ָʾ�ź�(�ɺ���)
-    input           rvalid,         //��������������(������������Ч)
-    output          rready,         //��������������(master��׼���ý�������)
+    //r  读响应通道
+    input  [3:0]    rid,            //读请求的ID号，同一请求的rid=arid
+    input  [31:0]   rdata,          //读请求的读回数据
+    input  [1:0]    rresp,          //本次读请求是否成功完成(可忽略)
+    input           rlast,          //本次读请求最后一拍指示信号(可忽略)
+    input           rvalid,         //读请求数据握手(读请求数据有效)
+    output          rready,         //读请求数据握手(master端准备好接收数据)
 
-    //aw  д����ͨ��
-    output [3:0]    awid,           //д�����ID��
-    output [31:0]   awaddr,         //д����ĵ�ַ
-    output [7:0]    awlen,          //������ĳ���
-    output [2:0]    awsize,         //������Ĵ�С(���ݴ���ÿ�ĵ��ֽ���)
-    output [1:0]    awburst,        //��������
-    output [1:0]    awlock,         //ԭ����
-    output [1:0]    awcache,        //CACHE����
-    output [2:0]    awprot,         //��������
-    output          awvalid,        //д�����ַ����(д�����ַ��Ч)
-    input           awready,        //д�����ַ����(slave��׼���ý��յ�ַ)
+    //aw  写请求通道
+    output [3:0]    awid,           //写请求的ID号
+    output [31:0]   awaddr,         //写请求的地址
+    output [7:0]    awlen,          //请求传输的长度
+    output [2:0]    awsize,         //请求传输的大小(数据传输每拍的字节数)
+    output [1:0]    awburst,        //传输类型
+    output [1:0]    awlock,         //原子锁
+    output [1:0]    awcache,        //CACHE属性
+    output [2:0]    awprot,         //保护属性
+    output          awvalid,        //写请求地址握手(写请求地址有效)
+    input           awready,        //写请求地址握手(slave端准备好接收地址)
 
-    //w  д����ͨ��
-    output [3:0]    wid,            //д�����ID��
-    output [31:0]   wdata,          //д�����д����
-    output [3:0]    wstrb,          //�ֽ�ѡͨλ
-    output          wlast,          //����д��������һ�����ݵ�ָʾ�ź�
-    output          wvalid,         //д������������(д����������Ч)
-    input           wready,         //д������������(slave��׼���ý�������)
+    //w  写数据通道
+    output [3:0]    wid,            //写请求的ID号
+    output [31:0]   wdata,          //写请求的写数据
+    output [3:0]    wstrb,          //字节选通位
+    output          wlast,          //本次写请求的最后一拍数据的指示信号
+    output          wvalid,         //写请求数据握手(写请求数据有效)
+    input           wready,         //写请求数据握手(slave端准备好接收数据)
 
-    //b  д��Ӧͨ��
+    //b  写响应通道
     input  [3:0]    bid,            //bid = wid = awid
-    input  [1:0]    bresp,          //����д�����Ƿ�ɹ����
-    input           bvalid,         //д������Ӧ����(д������Ӧ��Ч)
-    output          bready,         //д������Ӧ����(master��׼���ý���д��Ӧ)
+    input  [1:0]    bresp,          //本次写请求是否成功完成
+    input           bvalid,         //写请求响应握手(写请求响应有效)
+    output          bready,         //写请求响应握手(master端准备好接收写响应)
 
     // debug
     output [31:0] debug_wb_pc     ,

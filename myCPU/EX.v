@@ -51,14 +51,15 @@ module stage3_EX(
     input crmd_da,      //当前翻译模式
     input crmd_pg,
 
-    input [1:0] plv,    //当前特权等级, 0-3, 0为最�?
-    input [1:0] datm,   //直接地址翻译模式下，load/store操作的存储访问类�?
+    input [1:0] plv,    //当前特权等级, 0-3, 0为最高
+    input [1:0] datm,    //直接地址翻译模式下，load/store操作的存储访问类型
 
-    input DMW0_PLV0,        //�?1表示在PLV0下可以使用该窗口进行直接映射地址翻译
-    input DMW0_PLV3,        //�?1表示在PLV3下可以使用该窗口进行直接映射地址翻译
-    input [1:0] DMW0_MAT,   //虚地�?落在该映射窗口下访存操作的存储类型访�?
-    input [2:0] DMW0_PSEG,  //直接映射窗口物理地址�?3�?
-    input [2:0] DMW0_VSEG,  //直接映射窗口虚地�?�?3�?
+    input DMW0_PLV0,        //为1表示在PLV0下可以使用该窗口进行直接映射地址翻译
+    input DMW0_PLV3,        //为1表示在PLV3下可以使用该窗口进行直接映射地址翻译
+    input [1:0] DMW0_MAT,   //虚地址落在该映射窗口下访存操作的存储类型访问
+    input [2:0] DMW0_PSEG,  //直接映射窗口物理地址高3位
+    input [2:0] DMW0_VSEG,  //直接映射窗口虚地址高3位
+
 
     input DMW1_PLV0,        
     input DMW1_PLV3,       
@@ -79,10 +80,10 @@ module stage3_EX(
 /*------------------------------------------------------------*/
 /*
 1: es_ex_loadstore_tlb_refill   TLB重填例外
-2: es_ex_load_invalid           load操作页无效例�?
-3: es_ex_store_invalid          store操作页无效例�?
+2: es_ex_load_invalid           load操作页无效例外
+3: es_ex_store_invalid          store操作页无效例外
 4: es_ex_loadstore_plv_invalid  页特权等级不合规例外
-5：es_ex_store_dirty               页修改例�?  
+5：es_ex_store_dirty               页修改例外 
 */
 
 wire es_ex_loadstore_tlb_fill;
@@ -435,8 +436,8 @@ assign if_es_has_int = es_ex_syscall || es_ertn_flush || es_ex_ADEF || es_ex_ALE
                 || es_ex_fetch_tlb_refill || es_ex_inst_invalid || es_ex_fetch_plv_invalid
                 || es_ex_loadstore_tlb_fill || es_ex_load_invalid || es_ex_store_invalid
                 || es_ex_loadstore_plv_invalid || es_ex_store_dirty ;
-// 当MS级的allowin�??1时再发出req，是为了保证req与addr_ok握手时allowin也是拉高�??
-// 当es流水级或ms,ws有异常时阻止访存，为了维护精确异常�??
+// 当MS级的allowin1时再发出req，是为了保证req与addr_ok握手时allowin也是拉高
+// 当es流水级或ms,ws有异常时阻止访存，为了维护精确异常
 assign data_sram_req = (ms_allow_in && no_exception) && (es_res_from_mem || es_mem_we) && es_valid;
 
 reg es_valid;
