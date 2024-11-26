@@ -320,9 +320,6 @@ stage1_IF fetch(
     .inst_sram_data_ok  (inst_sram_data_ok),
     .inst_sram_rdata    (inst_sram_rdata),
 
-    .tlb_zombie         (tlb_zombie),
-    .tlb_reflush        (tlb_reflush),
-    .tlb_reflush_pc     (tlb_reflush_pc),
 
     .crmd_da            (crmd_da),
     .crmd_pg            (crmd_pg),

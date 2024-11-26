@@ -31,9 +31,6 @@ module stage1_IF(
     input        inst_sram_data_ok,
     input [31:0] inst_sram_rdata,
 
-    input tlb_zombie,
-    input tlb_reflush,
-    input [31:0] tlb_reflush_pc,
 
     //for translate
     input crmd_da,      //当前翻译模式
@@ -111,7 +108,7 @@ always @(posedge clk)
             fs_valid <= 1'b0;
         else if(fs_allow_in)
             begin
-                if(wb_ex || ertn_flush || tlb_reflush) 
+                if(wb_ex || ertn_flush) 
                    /*
                     IF级没有有效指令 或 有效指令将要流向ID级，
                     若收到cancel
@@ -141,7 +138,7 @@ always @(posedge clk)
             temp_inst <= 0;
         else if(fs_ready_go)
             begin
-                if(wb_ex || ertn_flush || tlb_reflush) 
+                if(wb_ex || ertn_flush) 
                     //当cancel时，将缓存指令清0
                     temp_inst <= 0;
                 else if(!ds_allow_in)
@@ -166,10 +163,10 @@ always @(posedge clk)
     begin
         if(reset)
             deal_with_cancel <= 1'b0;
-        else if((wb_ex || ertn_flush || tlb_reflush) && pre_if_to_fs_valid) 
+        else if((wb_ex || ertn_flush ) && pre_if_to_fs_valid) 
             //pre_if_to_fs_valid 对应pre-if发送的地址正好被接收
             deal_with_cancel <= 1'b1;
-        else if(~fs_allow_in && (wb_ex || ertn_flush || tlb_reflush) && ~fs_ready_go)
+        else if(~fs_allow_in && (wb_ex || ertn_flush ) && ~fs_ready_go)
             //~fs_allow_in 且 ~fs_ready_go 对应IF级正在等待data_ok
             deal_with_cancel <= 1'b1;
         else if(inst_sram_data_ok)
@@ -194,7 +191,6 @@ wire [31:0] next_pc;    //nextpc from branch or sequence
 assign next_pc = if_keep_pc ? br_delay_reg : 
                  wb_ex ? ex_entry : 
                  ertn_flush ? ertn_pc : 
-                 tlb_reflush ? tlb_reflush_pc : 
                  (br_taken && ~br_stall) ? br_target : 
                  seq_pc;
 
@@ -268,9 +264,9 @@ always @(posedge clk)
     begin
         if(reset)
             if_keep_pc <= 1'b0;
-        else if(inst_sram_addr_ok && ~deal_with_cancel && ~wb_ex && ~ertn_flush && ~tlb_reflush)
+        else if(inst_sram_addr_ok && ~deal_with_cancel && ~wb_ex && ~ertn_flush)
             if_keep_pc <= 1'b0;
-        else if((br_taken && ~br_stall) || wb_ex || ertn_flush || tlb_reflush)
+        else if((br_taken && ~br_stall) || wb_ex || ertn_flush)
             if_keep_pc <= 1'b1;
     end   
 
@@ -284,8 +280,6 @@ always @(posedge clk)
             br_delay_reg <= ex_entry;
         else if(ertn_flush)
             br_delay_reg <= ertn_pc;
-        else if(tlb_reflush)
-            br_delay_reg <= tlb_reflush_pc;
         else if(br_taken && ~br_stall)
             br_delay_reg <= br_target;
     end
@@ -309,7 +303,7 @@ always @(posedge clk)
     output [31:0]   inst_sram_wdata,   
 */
 
-//inst_sram_req在上面赋�?
+//inst_sram_req在上面赋 ?
 assign inst_sram_wr    = 1'b0;    //fetch阶段只读不写
 assign inst_sram_size  = 2'b10;   //fetch阶段访问4字节
 assign inst_sram_wstrb = 4'b0;    //fetch阶段wstrb无意义
@@ -333,7 +327,7 @@ assign fs_ex_ADEF = (if_ppt && next_pc[31]) || (next_pc_p[1] | next_pc_p[0]);  /
 assign fs_to_ds_bus[31:0] = fetch_pc;
 assign fs_to_ds_bus[63:32] = (temp_inst == 0) ? fetch_inst : temp_inst;
 assign fs_to_ds_bus[64:64] = fs_ex_ADEF;
-assign fs_to_ds_bus[65:65] = tlb_zombie;
+assign fs_to_ds_bus[65:65] = 0;//zombie
 assign fs_to_ds_bus[66:66] = fs_ex_fetch_tlb_refill;
 assign fs_to_ds_bus[67:67] = fs_ex_inst_invalid;
 assign fs_to_ds_bus[68:68] = fs_ex_fetch_plv_invalid;

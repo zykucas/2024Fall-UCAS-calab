@@ -489,7 +489,7 @@ always @(posedge clk)
     begin
         if(reset)
             fs_to_ds_bus_reg <= 0;
-        else if(ertn_flush || wb_ex || tlb_reflush)
+        else if(ertn_flush || wb_ex)
             fs_to_ds_bus_reg <= 0;
         else if(fs_to_ds_valid && ds_allow_in)         
             fs_to_ds_bus_reg <= fs_to_ds_bus;
@@ -789,19 +789,8 @@ regfile u_regfile(
     .waddr  (rf_waddr ),    
     .wdata  (rf_wdata )     
     );
-/*--------------------------tlb_zombie-----------------------------*/
 
-wire tlb_self_zombie;   
-assign tlb_self_zombie = ds_tlb_zombie;
-
-wire tlb_inst_zombie;   
-assign tlb_inst_zombie = inst_tlbwr | inst_tlbfill | inst_invtlb | inst_tlbrd;
-
-wire csr_inst_zombie;   
-assign csr_inst_zombie = (inst_csrwr | inst_csrxchg) && (ds_csr_num == `CSR_CRMD || 
-                        ds_csr_num == `CSR_DMW0 || ds_csr_num == `CSR_DMW1 || ds_csr_num == `CSR_ASID);
-
-assign tlb_zombie = 0;/*tlb_self_zombie | tlb_inst_zombie | csr_inst_zombie;*/
+assign tlb_zombie = 0;
 
 /*----------------------------------------------------------------*/
 

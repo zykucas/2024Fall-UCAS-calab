@@ -178,7 +178,7 @@ always @(posedge clk)
     begin
         if(reset)
             ds_to_es_bus_reg <= 0;
-        else if(ertn_flush || wb_ex || tlb_reflush)
+        else if(ertn_flush || wb_ex )
             ds_to_es_bus_reg <= 0;
         else if(ds_to_es_valid && es_allow_in)
             ds_to_es_bus_reg <= ds_to_es_bus;
