@@ -183,7 +183,7 @@ assign w_d1   = tlbelo1_d;
 assign w_v1   = tlbelo1_v;
 
 //for tlb_zombie
-assign tlb_reflush = ws_tlb_zombie;
+assign tlb_reflush = 0;
 assign tlb_reflush_pc = ws_pc;
 
 /*-------------------------------------------------------------*/
@@ -253,8 +253,7 @@ wire ws_ex_store_invalid;
 wire ws_ex_loadstore_plv_invalid;
 wire ws_ex_store_dirty;
 
-//ADEM exception
-wire        ws_ex_ADEM;
+// TLB exception
 wire ex_plv_invalid;
 assign ex_plv_invalid = ws_ex_fetch_plv_invalid | ws_ex_loadstore_plv_invalid;
 wire ex_tlb_refill;
@@ -273,7 +272,7 @@ always @(posedge clk)
             ms_to_ws_bus_reg <= 0;
     end 
 
-assign {ws_ex_ADEM, ws_ex_store_dirty, ws_ex_loadstore_plv_invalid, ws_ex_store_invalid, ws_ex_load_invalid, ws_ex_loadstore_tlb_fill,
+assign {ws_ex_store_dirty, ws_ex_loadstore_plv_invalid, ws_ex_store_invalid, ws_ex_load_invalid, ws_ex_loadstore_tlb_fill,
         ws_ex_fetch_plv_invalid, ws_ex_inst_invalid, ws_ex_fetch_tlb_refill,
         ws_s1_asid, ws_tlb_zombie,
         ws_inst_invtlb_op, ws_s1_index, ws_s1_found, ws_inst_invtlb, ws_inst_tlbfill, ws_inst_tlbwr, ws_inst_tlbrd, ws_inst_tlbsrch,
@@ -285,7 +284,9 @@ assign {ws_ex_ADEM, ws_ex_store_dirty, ws_ex_loadstore_plv_invalid, ws_ex_store_
 /*-------------------------------------------------------*/
 
 /*---------------------------link csr_reg---------------------*/
-assign csr_num = wb_ex ? `CSR_ERA : ws_csr_num ;
+//tlb exception
+
+assign csr_num = ex_tlb_refill ? `CSR_TLBRENTRY : (wb_ex ? `CSR_ERA : ws_csr_num) ;
 assign csr_re = 1'b1;
 //input [31:0] csr_rvalue
 
@@ -297,7 +298,7 @@ assign ertn_flush = ws_ertn_flush;
 assign wb_ex = ws_ex_syscall || ws_ex_break || ws_ex_ADEF || ws_ex_ALE || ws_ex_INE || ws_has_int
             || ws_ex_fetch_tlb_refill || ws_ex_inst_invalid || ws_ex_fetch_plv_invalid
             || ws_ex_loadstore_tlb_fill || ws_ex_load_invalid || ws_ex_store_invalid
-            || ws_ex_loadstore_plv_invalid || ws_ex_store_dirty || ws_ex_ADEM;
+            || ws_ex_loadstore_plv_invalid || ws_ex_store_dirty ;
 
 assign wb_pc = ws_pc;
 
@@ -306,7 +307,7 @@ assign wb_pc = ws_pc;
  *in task12, we just finish syscall
  */
 assign wb_ecode = ws_ex_syscall ? 6'hb : ws_ex_break ? 6'hc : 
-                  ws_ex_ADEF||ws_ex_ADEM ? 6'h8 : ws_ex_ALE ? 6'h9 : 
+                  ws_ex_ADEF ? 6'h8 : ws_ex_ALE ? 6'h9 : 
                   ws_ex_INE ? 6'hd : ws_has_int ? 6'h0 : 
                   ws_ex_load_invalid ? 6'h1 :
                   ws_ex_store_invalid ? 6'h2 :

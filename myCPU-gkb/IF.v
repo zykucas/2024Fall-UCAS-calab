@@ -245,7 +245,7 @@ assign next_pc_p = if_dt ? next_pc_dt : if_indt ?
 3: ex_store_invalid               store操作页无效例外
 4: fs_ex_inst_invalid             取值操作页无效例外
 5: fs_ex_fetch_plv_invalid        页特权等级不合规例外
-6：ex_store_dirty                 页修改例外  
+6: ex_store_dirty                 页修改例外  
 */
 
 wire fs_ex_fetch_tlb_refill;

@@ -206,7 +206,7 @@ wire crmd_da;
 wire crmd_pg;
 wire [1:0] crmd_datf;
 wire [1:0] crmd_datm;
-
+wire [31:0] ex_tlbentry;
 /*--------------------------------------------------------------------*/
 
 /*-----------------------------guchaoyang----------------------------*/
@@ -330,7 +330,6 @@ stage1_IF fetch(
     .crmd_datm          (crmd_datm),
 
     .plv                (crmd_plv),
-    .datf               (crmd_datf),
 
     .DMW0_PLV0          (tlbdmw0_plv0),
     .DMW0_PLV3          (tlbdmw0_plv3),

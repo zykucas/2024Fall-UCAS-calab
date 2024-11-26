@@ -33,7 +33,7 @@ module stage4_MEM(
 assign es_to_ms_bus[31:0] = es_pc;
 assign es_to_ms_bus[32:32] = es_gr_we & ~es_ex_ALE &
                              ~es_ex_load_invalid & ~es_ex_loadstore_plv_invalid & ~es_ex_loadstore_tlb_fill &
-                             ~es_ex_store_invalid & ~es_ex_store_dirty & ~es_ex_ADEM; 
+                             ~es_ex_store_invalid & ~es_ex_store_dirty ; 
 assign es_to_ms_bus[33:33] = es_res_from_mem;
 assign es_to_ms_bus[38:34] = es_dest;
 assign es_to_ms_bus[70:39] = es_cal_result;
@@ -85,8 +85,6 @@ assign es_to_ms_bus[242:242] = es_ex_store_invalid;
 assign es_to_ms_bus[243:243] = es_ex_loadstore_plv_invalid;
 assign es_to_ms_bus[244:244] = es_ex_store_dirty;
 
-//ADEM exception
-assign es_to_ms_bus[245:245] = es_ex_ADEM;
 */
 
 wire [31:0] ms_pc;
@@ -138,8 +136,6 @@ wire ms_ex_store_invalid;
 wire ms_ex_loadstore_plv_invalid;
 wire ms_ex_store_dirty;
 
-//ADEM exception
-wire        ms_ex_ADEM;
 
 reg [`WIDTH_ES_TO_MS_BUS-1:0] es_to_ms_bus_reg;
 always @(posedge clk)
@@ -155,7 +151,7 @@ always @(posedge clk)
     end 
 //exp14
 //加入ms_mem_we
-assign {ms_ex_ADEM, ms_ex_store_dirty, ms_ex_loadstore_plv_invalid, ms_ex_store_invalid,
+assign { ms_ex_store_dirty, ms_ex_loadstore_plv_invalid, ms_ex_store_invalid,
         ms_ex_load_invalid, ms_ex_loadstore_tlb_fill, ms_ex_fetch_plv_invalid,
         ms_ex_inst_invalid, ms_ex_fetch_tlb_refill,
         ms_s1_asid, ms_tlb_zombie,
@@ -226,16 +222,15 @@ assign ms_to_ws_bus[235:235] = ms_ex_store_invalid;
 assign ms_to_ws_bus[236:236] = ms_ex_loadstore_plv_invalid;
 assign ms_to_ws_bus[237:237] = ms_ex_store_dirty;
 
-//ADEM exception
-assign ms_to_ws_bus[238:238] = ms_ex_ADEM;
+
 /*-------------------------------------------------------*/
 
 /*--------------------------valid------------------------*/
 reg ms_valid;    
 wire ms_ready_go;
 //exp14
-//当是load指令时，需要等待数据握手
-//data_ok拉高时表示store已经写入数据 或 load已经取到数据，将ms_ready_go拉高
+//当是load指令时，�?要等待数据握�?
+//data_ok拉高时表示store已经写入数据 �? load已经取到数据，将ms_ready_go拉高
 assign ms_ready_go = if_ms_has_int ? 1'b1 : (ms_mem_we || ms_res_from_mem) ? data_sram_data_ok : 1'b1;
 assign ms_allow_in = !ms_valid || ms_ready_go && ws_allow_in;
 assign ms_to_ws_valid = (ms_valid && ms_ready_go) & ~ertn_flush & ~wb_ex & ~tlb_reflush;
@@ -265,7 +260,7 @@ assign ms_to_ds_bus = {ms_to_ws_valid,ms_valid,ms_gr_we,ms_dest,if_ms_load,ms_fi
 assign if_ms_has_int = ms_ex_syscall || ms_ertn_flush || ms_ex_ADEF || ms_ex_INE || ms_ex_ALE || ms_ex_break || ms_has_int
                 || ms_ex_fetch_tlb_refill || ms_ex_inst_invalid || ms_ex_fetch_plv_invalid
                 || ms_ex_loadstore_tlb_fill || ms_ex_load_invalid || ms_ex_store_invalid
-                || ms_ex_loadstore_plv_invalid || ms_ex_store_dirty || ms_ex_ADEM;
+                || ms_ex_loadstore_plv_invalid || ms_ex_store_dirty ;
 
 //tlb add
 /*-------------------deliver if_ms_crush_tlbsrch---------------------*/

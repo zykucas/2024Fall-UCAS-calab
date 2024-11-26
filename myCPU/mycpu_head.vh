@@ -1,8 +1,8 @@
 `define WIDTH_BR_BUS       35
 `define WIDTH_FS_TO_DS_BUS 69
 `define WIDTH_DS_TO_ES_BUS 247
-`define WIDTH_ES_TO_MS_BUS 246
-`define WIDTH_MS_TO_WS_BUS 239
+`define WIDTH_ES_TO_MS_BUS 245
+`define WIDTH_MS_TO_WS_BUS 238
 `define WIDTH_WS_TO_DS_BUS 55
 `define WIDTH_ES_TO_DS_BUS 56
 `define WIDTH_MS_TO_DS_BUS 57
@@ -132,7 +132,7 @@
 `define ESUBCODE_TLBR 9'h0
 
 //TLB
-//长度为4，则TLB有2 ^ 4 = 16项
+//长度�?4，则TLB�?2 ^ 4 = 16�?
 `define TLB_LEN 4   
 
 //TLBIDX (TLB索引)
@@ -157,13 +157,13 @@
 `define TLBELO_PPN      27:8
 `define TLBELO_ZERO2    31:28
 
-//ASID (地址空间标识符)
+//ASID (地址空间标识�?)
 `define ASID_ASID       9:0
 `define ASID_ZERO1      15:10
 `define ASID_ASIDBITS   23:16
 `define ASID_ZERO2      31:24
 
-//TLBRENTRY (TLB重填例外入口地址）
+//TLBRENTRY (TLB重填例外入口地址�?
 `define TLBRENTRY_LOW   5:0     //only read
 `define TLBRENTRY_HIGH  31:6    //read and write
 
