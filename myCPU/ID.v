@@ -537,7 +537,7 @@ assign br_taken = ((inst_beq && rj_eq_rd) || (inst_bne && !rj_eq_rd)
                    || inst_jirl || inst_bl || inst_b) && ds_valid;
 
 wire br_taken_cancel;
-//当译码级是跳转指令，且与前面的load指令有数据冲突时，需要拉高br_stall令取指暂时阻塞
+//�����뼶����תָ�����ǰ���loadָ�������ݳ�ͻʱ����Ҫ����br_stall��ȡָ��ʱ����
 assign br_stall = (inst_beq || inst_bne || inst_bl || inst_b || inst_blt
                 || inst_bge || inst_bgeu || inst_bltu) && 
                 ((es_valid && if_es_load && (ex_crush1 || ex_crush2)) || (~ms_to_ws_valid && ms_valid && if_ms_load && (mem_crush1 || mem_crush2)) || csr_crush);
@@ -692,7 +692,7 @@ assign if_read_addr2 = inst_beq || inst_bne || inst_xor || inst_or || inst_and |
                        inst_sll_w || inst_srl_w || inst_sra_w ||
                        inst_mul_w || inst_mulh_w || inst_mulh_wu || inst_div_w || inst_div_wu ||
                        inst_mod_w || inst_mod_wu || inst_blt || inst_bge || inst_bltu || inst_bgeu ||
-                       inst_csrrd || inst_csrwr || inst_csrxchg;
+                       inst_csrrd || inst_csrwr || inst_csrxchg || inst_invtlb;
 
 /*----------------------------------------------------------------*/
 

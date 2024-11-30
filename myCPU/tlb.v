@@ -174,7 +174,7 @@ assign s0_index =   match0[ 1] ? 4'd1  :
                     match0[13] ? 4'd13 :
                     match0[14] ? 4'd14 :
                     match0[15] ? 4'd15 :
-                    4'd0; // Default, 娌℃湁鎵惧埌鏃堕渶瑕佹妸found缃负0
+                    4'd0; // Default, 没有找到时需要把found置为0
 
 assign s0_odd = tlb_ps4MB[s0_index] ? s0_vppn[8] : s0_va_bit12; //whether the odd page hit
 assign s0_ps = tlb_ps4MB[s0_index] ? 6'd21 : 6'd12;
@@ -202,7 +202,7 @@ assign s1_index =   match1[ 1] ? 4'd1  :
                     match1[13] ? 4'd13 :
                     match1[14] ? 4'd14 :
                     match1[15] ? 4'd15 :
-                    4'd0; // Default, 娌℃湁鎵惧埌鏃堕渶瑕佹妸found缃负0
+                    4'd0; // Default, 没有找到时需要把found置为0
 
 assign s1_odd = tlb_ps4MB[s1_index] ? s1_vppn[8] : s1_va_bit12;
 assign s1_ps = tlb_ps4MB[s1_index] ? 6'd21: 6'd12;

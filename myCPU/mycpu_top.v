@@ -56,52 +56,52 @@ module mycpu_top(
     input           aclk,
     input           aresetn,
 
-     //ar è¯»è¯·æ±‚é€šé“
+     //ar ¶ÁÇëÇóÍ¨µÀ
 
-    output [3:0]    arid,           //è¯»è¯·æ±‚IDå·                           å–æŒ‡0ï¼Œå–æ•°1        
-    output [31:0]   araddr,         //è¯»è¯·æ±‚çš„åœ°å€                          
-    output [7:0]    arlen,          //è¯·æ±‚ä¼ è¾“é•¿åº¦(æ•°æ®ä¼ è¾“æ‹æ•°)            å›ºå®šä¸º0
-    output [2:0]    arsize,         //è¯·æ±‚ä¼ è¾“å¤§å°(æ•°æ®ä¼ è¾“æ¯æ‹çš„å­—èŠ‚æ•°)     
-    output [1:0]    arburst,        //ä¼ è¾“ç±»å‹                             å›ºå®šä¸º2'b01
-    output [1:0]    arlock,         //åŸå­é”                               
-    output [3:0]    arcache,        //CACHEå±æ€§
-    output [2:0]    arprot,         //ä¿æŠ¤å±æ€§
-    output          arvalid,        //è¯»è¯·æ±‚åœ°å€æ¡æ‰‹(è¯»è¯·æ±‚åœ°å€æœ‰æ•ˆ)
-    input           arready,        //è¯»è¯·æ±‚åœ°å€æ¡æ‰‹(slaveç«¯å‡†å¤‡å¥½æ¥æ”¶åœ°å€)
+    output [3:0]    arid,           //¶ÁÇëÇóIDºÅ                           È¡Ö¸0£¬È¡Êı1        
+    output [31:0]   araddr,         //¶ÁÇëÇóµÄµØÖ·                          
+    output [7:0]    arlen,          //ÇëÇó´«Êä³¤¶È(Êı¾İ´«ÊäÅÄÊı)            ¹Ì¶¨Îª0
+    output [2:0]    arsize,         //ÇëÇó´«Êä´óĞ¡(Êı¾İ´«ÊäÃ¿ÅÄµÄ×Ö½ÚÊı)     
+    output [1:0]    arburst,        //´«ÊäÀàĞÍ                             ¹Ì¶¨Îª2'b01
+    output [1:0]    arlock,         //Ô­×ÓËø                               
+    output [3:0]    arcache,        //CACHEÊôĞÔ
+    output [2:0]    arprot,         //±£»¤ÊôĞÔ
+    output          arvalid,        //¶ÁÇëÇóµØÖ·ÎÕÊÖ(¶ÁÇëÇóµØÖ·ÓĞĞ§)
+    input           arready,        //¶ÁÇëÇóµØÖ·ÎÕÊÖ(slave¶Ë×¼±¸ºÃ½ÓÊÕµØÖ·)
 
-    //r  è¯»å“åº”é€šé“
-    input  [3:0]    rid,            //è¯»è¯·æ±‚çš„IDå·ï¼ŒåŒä¸€è¯·æ±‚çš„rid=arid
-    input  [31:0]   rdata,          //è¯»è¯·æ±‚çš„è¯»å›æ•°æ®
-    input  [1:0]    rresp,          //æœ¬æ¬¡è¯»è¯·æ±‚æ˜¯å¦æˆåŠŸå®Œæˆ(å¯å¿½ç•¥)
-    input           rlast,          //æœ¬æ¬¡è¯»è¯·æ±‚æœ€åä¸€æ‹æŒ‡ç¤ºä¿¡å·(å¯å¿½ç•¥)
-    input           rvalid,         //è¯»è¯·æ±‚æ•°æ®æ¡æ‰‹(è¯»è¯·æ±‚æ•°æ®æœ‰æ•ˆ)
-    output          rready,         //è¯»è¯·æ±‚æ•°æ®æ¡æ‰‹(masterç«¯å‡†å¤‡å¥½æ¥æ”¶æ•°æ®)
+    //r  ¶ÁÏìÓ¦Í¨µÀ
+    input  [3:0]    rid,            //¶ÁÇëÇóµÄIDºÅ£¬Í¬Ò»ÇëÇóµÄrid=arid
+    input  [31:0]   rdata,          //¶ÁÇëÇóµÄ¶Á»ØÊı¾İ
+    input  [1:0]    rresp,          //±¾´Î¶ÁÇëÇóÊÇ·ñ³É¹¦Íê³É(¿ÉºöÂÔ)
+    input           rlast,          //±¾´Î¶ÁÇëÇó×îºóÒ»ÅÄÖ¸Ê¾ĞÅºÅ(¿ÉºöÂÔ)
+    input           rvalid,         //¶ÁÇëÇóÊı¾İÎÕÊÖ(¶ÁÇëÇóÊı¾İÓĞĞ§)
+    output          rready,         //¶ÁÇëÇóÊı¾İÎÕÊÖ(master¶Ë×¼±¸ºÃ½ÓÊÕÊı¾İ)
 
-    //aw  å†™è¯·æ±‚é€šé“
-    output [3:0]    awid,           //å†™è¯·æ±‚çš„IDå·
-    output [31:0]   awaddr,         //å†™è¯·æ±‚çš„åœ°å€
-    output [7:0]    awlen,          //è¯·æ±‚ä¼ è¾“çš„é•¿åº¦
-    output [2:0]    awsize,         //è¯·æ±‚ä¼ è¾“çš„å¤§å°(æ•°æ®ä¼ è¾“æ¯æ‹çš„å­—èŠ‚æ•°)
-    output [1:0]    awburst,        //ä¼ è¾“ç±»å‹
-    output [1:0]    awlock,         //åŸå­é”
-    output [1:0]    awcache,        //CACHEå±æ€§
-    output [2:0]    awprot,         //ä¿æŠ¤å±æ€§
-    output          awvalid,        //å†™è¯·æ±‚åœ°å€æ¡æ‰‹(å†™è¯·æ±‚åœ°å€æœ‰æ•ˆ)
-    input           awready,        //å†™è¯·æ±‚åœ°å€æ¡æ‰‹(slaveç«¯å‡†å¤‡å¥½æ¥æ”¶åœ°å€)
+    //aw  Ğ´ÇëÇóÍ¨µÀ
+    output [3:0]    awid,           //Ğ´ÇëÇóµÄIDºÅ
+    output [31:0]   awaddr,         //Ğ´ÇëÇóµÄµØÖ·
+    output [7:0]    awlen,          //ÇëÇó´«ÊäµÄ³¤¶È
+    output [2:0]    awsize,         //ÇëÇó´«ÊäµÄ´óĞ¡(Êı¾İ´«ÊäÃ¿ÅÄµÄ×Ö½ÚÊı)
+    output [1:0]    awburst,        //´«ÊäÀàĞÍ
+    output [1:0]    awlock,         //Ô­×ÓËø
+    output [1:0]    awcache,        //CACHEÊôĞÔ
+    output [2:0]    awprot,         //±£»¤ÊôĞÔ
+    output          awvalid,        //Ğ´ÇëÇóµØÖ·ÎÕÊÖ(Ğ´ÇëÇóµØÖ·ÓĞĞ§)
+    input           awready,        //Ğ´ÇëÇóµØÖ·ÎÕÊÖ(slave¶Ë×¼±¸ºÃ½ÓÊÕµØÖ·)
 
-    //w  å†™æ•°æ®é€šé“
-    output [3:0]    wid,            //å†™è¯·æ±‚çš„IDå·
-    output [31:0]   wdata,          //å†™è¯·æ±‚çš„å†™æ•°æ®
-    output [3:0]    wstrb,          //å­—èŠ‚é€‰é€šä½
-    output          wlast,          //æœ¬æ¬¡å†™è¯·æ±‚çš„æœ€åä¸€æ‹æ•°æ®çš„æŒ‡ç¤ºä¿¡å·
-    output          wvalid,         //å†™è¯·æ±‚æ•°æ®æ¡æ‰‹(å†™è¯·æ±‚æ•°æ®æœ‰æ•ˆ)
-    input           wready,         //å†™è¯·æ±‚æ•°æ®æ¡æ‰‹(slaveç«¯å‡†å¤‡å¥½æ¥æ”¶æ•°æ®)
+    //w  Ğ´Êı¾İÍ¨µÀ
+    output [3:0]    wid,            //Ğ´ÇëÇóµÄIDºÅ
+    output [31:0]   wdata,          //Ğ´ÇëÇóµÄĞ´Êı¾İ
+    output [3:0]    wstrb,          //×Ö½ÚÑ¡Í¨Î»
+    output          wlast,          //±¾´ÎĞ´ÇëÇóµÄ×îºóÒ»ÅÄÊı¾İµÄÖ¸Ê¾ĞÅºÅ
+    output          wvalid,         //Ğ´ÇëÇóÊı¾İÎÕÊÖ(Ğ´ÇëÇóÊı¾İÓĞĞ§)
+    input           wready,         //Ğ´ÇëÇóÊı¾İÎÕÊÖ(slave¶Ë×¼±¸ºÃ½ÓÊÕÊı¾İ)
 
-    //b  å†™å“åº”é€šé“
+    //b  Ğ´ÏìÓ¦Í¨µÀ
     input  [3:0]    bid,            //bid = wid = awid
-    input  [1:0]    bresp,          //æœ¬æ¬¡å†™è¯·æ±‚æ˜¯å¦æˆåŠŸå®Œæˆ
-    input           bvalid,         //å†™è¯·æ±‚å“åº”æ¡æ‰‹(å†™è¯·æ±‚å“åº”æœ‰æ•ˆ)
-    output          bready,         //å†™è¯·æ±‚å“åº”æ¡æ‰‹(masterç«¯å‡†å¤‡å¥½æ¥æ”¶å†™å“åº”)
+    input  [1:0]    bresp,          //±¾´ÎĞ´ÇëÇóÊÇ·ñ³É¹¦Íê³É
+    input           bvalid,         //Ğ´ÇëÇóÏìÓ¦ÎÕÊÖ(Ğ´ÇëÇóÏìÓ¦ÓĞĞ§)
+    output          bready,         //Ğ´ÇëÇóÏìÓ¦ÎÕÊÖ(master¶Ë×¼±¸ºÃ½ÓÊÕĞ´ÏìÓ¦)
 
     // debug
     output [31:0] debug_wb_pc     ,
@@ -130,23 +130,40 @@ wire        cpu_data_addr_ok;
 wire        cpu_data_data_ok;
 wire [31:0] cpu_data_rdata;
 
+//icache read channel
+    wire [31:0] inst_addr_vrtl;
+    wire        icache_addr_ok;
+    wire        icache_data_ok;
+    wire [31:0] icache_rdata;
+    wire        icache_rd_req;
+    wire [ 2:0] icache_rd_type;
+    wire [31:0] icache_rd_addr;
+    wire        icache_rd_rdy;
+    wire        icache_ret_valid;
+    wire        icache_ret_last;
+    wire [31:0] icache_ret_data;
 
+    //icache write channel=meaning less ,all is 0        
+    wire        icache_wr_req;
+    wire [ 2:0] icache_wr_type;
+    wire [31:0] icache_wr_addr;
+    wire [ 3:0] icache_wr_strb;
+    wire [127:0]icache_wr_data;
+    wire        icache_wr_rdy=1'b0;  
 
 cpu_bridge_axi u_cpu_bridge_axi(
     .clk        (aclk),
     .resetn     (aresetn),
 
     //inst sram
-    .inst_req       (cpu_inst_req),
-    .inst_wr        (cpu_inst_wr),
-    .inst_size      (cpu_inst_size),
-    .inst_addr      (cpu_inst_addr),
-    .inst_wstrb     (cpu_inst_wstrb),
-    .inst_wdata     (cpu_inst_wdata),
-    .inst_addr_ok   (cpu_inst_addr_ok),
-    .inst_data_ok   (cpu_inst_data_ok),
-    .inst_rdata     (cpu_inst_rdata),
-
+    .icache_rd_req  (icache_rd_req),
+    .icache_rd_type (icache_rd_type),
+    .icache_rd_addr (icache_rd_addr),
+    .icache_rd_rdy  (icache_rd_rdy),
+    .icache_ret_valid(icache_ret_valid),
+    .icache_ret_last(icache_ret_last),
+    .icache_ret_data(icache_ret_data),
+    
     //data sram
     .data_req       (cpu_data_req),
     .data_wr        (cpu_data_wr),
@@ -216,9 +233,9 @@ mycpu u_cpu(
     .inst_sram_wstrb  (cpu_inst_wstrb),
     .inst_sram_addr   (cpu_inst_addr),
     .inst_sram_wdata  (cpu_inst_wdata),
-    .inst_sram_addr_ok(cpu_inst_addr_ok),
-    .inst_sram_data_ok(cpu_inst_data_ok),
-    .inst_sram_rdata  (cpu_inst_rdata),
+    .inst_sram_addr_ok(icache_addr_ok),
+    .inst_sram_data_ok(icache_data_ok),
+    .inst_sram_rdata  (icache_rdata),
 
     // data sram
     .data_sram_req    (cpu_data_req),
@@ -235,7 +252,43 @@ mycpu u_cpu(
     .debug_wb_pc      (debug_wb_pc),
     .debug_wb_rf_we  (debug_wb_rf_we),
     .debug_wb_rf_wnum (debug_wb_rf_wnum),
-    .debug_wb_rf_wdata(debug_wb_rf_wdata)
+    .debug_wb_rf_wdata(debug_wb_rf_wdata),
+
+    //icache add
+    .inst_addr_vrtl   (inst_addr_vrtl)
+);
+
+cache icache(
+    //----------cpu interface------
+        .clk    (aclk                       ),
+        .resetn (aresetn                    ),
+        .valid  (cpu_inst_req               ),//pre-if request valid
+        .op     (cpu_inst_wr                ),//always 0==read
+        .index  (inst_addr_vrtl[11:4]       ),
+        .tag    (cpu_inst_addr[31:12]       ),//from tlb:inst_sram_addr[31:12]=ÊµµØÖ·
+        .offset (inst_addr_vrtl[3:0]        ),
+        .wstrb  (cpu_inst_wstrb             ),
+        .wdata  (cpu_inst_wdata             ),
+        .addr_ok(icache_addr_ok             ),//output Á÷Ë®Ïß·½Ïò ×èÈûÁ÷Ë®ÏßµÄÖ¸Áî
+        .data_ok(icache_data_ok             ),
+        .rdata  (icache_rdata               ),//output
+        //--------AXI read interface-------
+        .rd_req (icache_rd_req              ),//output
+        .rd_type(icache_rd_type             ),
+        .rd_addr(icache_rd_addr             ),
+
+        .rd_rdy   (icache_rd_rdy            ),//input ×ÜÏß·¢À´µÄ
+        .ret_valid(icache_ret_valid         ),
+        .ret_last (icache_ret_last          ),
+        .ret_data (icache_ret_data          ),
+
+        //--------AXI write interface------
+        .wr_req (icache_wr_req              ),//output,¶ÔÓÚicacheÓÀÔ¶ÊÇ0
+        .wr_type(icache_wr_type             ),
+        .wr_addr(icache_wr_addr             ),
+        .wr_wstrb(icache_wr_strb             ),
+        .wr_data(icache_wr_data             ),
+        .wr_rdy (icache_wr_rdy              )//icache²»»áÕæÕıÒªĞ´sram£¬ÖÃ1Ã»ÓĞ¹ØÏµ
 );
 
 endmodule

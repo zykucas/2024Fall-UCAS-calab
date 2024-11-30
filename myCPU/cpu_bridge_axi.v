@@ -15,7 +15,7 @@ module cpu_bridge_axi(
     input:  cpu --> bridge
     output: bridge --> cpu
     */
-    input           inst_req,
+    /*input           inst_req,
     input           inst_wr,
     input  [1:0]    inst_size,
     input  [31:0]   inst_addr,
@@ -23,7 +23,7 @@ module cpu_bridge_axi(
     input  [31:0]   inst_wdata,
     output [31:0]   inst_rdata,
     output          inst_addr_ok,
-    output          inst_data_ok,
+    output          inst_data_ok,*/
 
     /*
     data sram:
@@ -48,70 +48,92 @@ module cpu_bridge_axi(
     output: bridge --> axi
     */
 
-    //ar    è¯»è¯·æ±‚é€šé“
-    output [3:0]    arid,           //è¯»è¯·æ±‚IDå·                           å–æŒ‡0ï¼Œå–æ•°1     
-    output [31:0]   araddr,         //è¯»è¯·æ±‚çš„åœ°å€    
+    //ar    ¶ÁÇëÇóÍ¨µÀ
+    output [3:0]    arid,           //¶ÁÇëÇóID                           È¡Ö¸0£¬È¡1     
+    output [31:0]   araddr,         //¶ÁÇëÇóµÄµØÖ·    
     output [7:0]    arlen,          //fixed --> 8'b0
-    output [2:0]    arsize,         //è¯·æ±‚ä¼ è¾“å¤§å°(æ•°æ®ä¼ è¾“æ¯æ‹çš„å­—èŠ‚æ•°)     
+    output [2:0]    arsize,         //ÇëÇó´«Êä´óĞ¡(Êı¾İ´«ÊäÃ¿ÅÄµÄ×Ö½ÚÊı)     
     output [1:0]    arburst,        //fixed --> 2'b1
     output [1:0]    arlock,         //fixed --> 2'b0
     output [3:0]    arcache,        //fixed --> 4'b0
     output [2:0]    arprot,         //fixed --> 3'b0
-    output          arvalid,        //è¯»è¯·æ±‚åœ°å€æ¡æ‰‹(è¯»è¯·æ±‚åœ°å€æœ‰æ•ˆ)
-    input           arready,        //è¯»è¯·æ±‚åœ°å€æ¡æ‰‹(slaveç«¯å‡†å¤‡å¥½æ¥æ”¶åœ°å€)
+    output          arvalid,        //¶ÁÇëÇóµØÖ·ÎÕÊÖ(¶ÁÇëÇóµØÖ·ÓĞĞ§)
+    input           arready,        //¶ÁÇëÇóµØÖ·ÎÕÊÖ(slave¶Ë×¼±¸ºÃ½ÓÊÕµØÖ·)
 
-    //r  è¯»å“åº”é€šé“
-    input  [3:0]    rid,            //è¯»è¯·æ±‚çš„IDå·ï¼ŒåŒä¸€è¯·æ±‚çš„rid=arid
-    input  [31:0]   rdata,          //è¯»è¯·æ±‚çš„è¯»å›æ•°æ®
+    //r  ¶ÁÏìÓ¦Í¨µÀ
+    input  [3:0]    rid,            //¶ÁÇëÇóµÄIDºÅ£¬Í¬Ò»ÇëÇóµÄrid=arid
+    input  [31:0]   rdata,          //¶ÁÇëÇóµÄ¶Á»ØÊı¾İ
     input  [1:0]    rresp,          //ignore
     input           rlast,          //ignore
-    input           rvalid,         //è¯»è¯·æ±‚æ•°æ®æ¡æ‰‹(è¯»è¯·æ±‚æ•°æ®æœ‰æ•ˆ)
-    output          rready,         //è¯»è¯·æ±‚æ•°æ®æ¡æ‰‹(masterç«¯å‡†å¤‡å¥½æ¥æ”¶æ•°æ®)
+    input           rvalid,         //¶ÁÇëÇóÊı¾İÎÕÊÖ(¶ÁÇëÇóÊı¾İÓĞĞ§)
+    output          rready,         //¶ÁÇëÇóÊı¾İÎÕÊÖ(master¶Ë×¼±¸ºÃ½ÓÊÕÊı¾İ)
 
-    //aw  å†™è¯·æ±‚é€šé“
+    //aw  Ğ´ÇëÇóÍ¨µÀ
     output [3:0]    awid,           //fixed, 4'b1
-    output [31:0]   awaddr,         //å†™è¯·æ±‚çš„åœ°å€
+    output [31:0]   awaddr,         //Ğ´ÇëÇóµÄµØÖ·
     output [7:0]    awlen,          //fixed, 8'b0
-    output [2:0]    awsize,         //è¯·æ±‚ä¼ è¾“çš„å¤§å°(æ•°æ®ä¼ è¾“æ¯æ‹çš„å­—èŠ‚æ•°)
+    output [2:0]    awsize,         //ÇëÇó´«ÊäµÄ´óĞ¡(Êı¾İ´«ÊäÃ¿ÅÄµÄ×Ö½ÚÊı)
     output [1:0]    awburst,        //fixed, 2'b1
     output [1:0]    awlock,         //fixed, 2'b0
     output [1:0]    awcache,        //fixed, 4'b0
     output [2:0]    awprot,         //fixed, 3'b0
-    output          awvalid,        //å†™è¯·æ±‚åœ°å€æ¡æ‰‹(å†™è¯·æ±‚åœ°å€æœ‰æ•ˆ)
-    input           awready,        //å†™è¯·æ±‚åœ°å€æ¡æ‰‹(slaveç«¯å‡†å¤‡å¥½æ¥æ”¶åœ°å€)
+    output          awvalid,        //Ğ´ÇëÇóµØÖ·ÎÕÊÖ(Ğ´ÇëÇóµØÖ·ÓĞĞ§)
+    input           awready,        //Ğ´ÇëÇóµØÖ·ÎÕÊÖ(slave¶Ë×¼±¸ºÃ½ÓÊÕµØÖ·)
 
-    //w  å†™æ•°æ®é€šé“
+    //w  Ğ´Êı¾İÍ¨µÀ
     output [3:0]    wid,            //fixed, 4'b1
-    output [31:0]   wdata,          //å†™è¯·æ±‚çš„å†™æ•°æ®
-    output [3:0]    wstrb,          //å­—èŠ‚é€‰é€šä½
+    output [31:0]   wdata,          //Ğ´ÇëÇóµÄĞ´Êı¾İ
+    output [3:0]    wstrb,          //×Ö½ÚÑ¡ÔñÎ»
     output          wlast,          //fixed, 1'b1
-    output          wvalid,         //å†™è¯·æ±‚æ•°æ®æ¡æ‰‹(å†™è¯·æ±‚æ•°æ®æœ‰æ•ˆ)
-    input           wready,         //å†™è¯·æ±‚æ•°æ®æ¡æ‰‹(slaveç«¯å‡†å¤‡å¥½æ¥æ”¶æ•°æ®)
+    output          wvalid,         //Ğ´ÇëÇóÊı¾İÎÕÊÖ(Ğ´ÇëÇóÊı¾İÓĞĞ§)
+    input           wready,         //Ğ´ÇëÇóÊı¾İÎÕÊÖ(slave¶Ë×¼±¸ºÃ½ÓÊÕÊı¾İ)
 
-    //b  å†™å“åº”é€šé“
+    //b  Ğ´ÏìÓ¦Í¨µÀ
     input  [3:0]    bid,            //ignore
     input  [1:0]    bresp,          //ignore
-    input           bvalid,         //å†™è¯·æ±‚å“åº”æ¡æ‰‹(å†™è¯·æ±‚å“åº”æœ‰æ•ˆ)
-    output          bready          //å†™è¯·æ±‚å“åº”æ¡æ‰‹(masterç«¯å‡†å¤‡å¥½æ¥æ”¶å†™å“åº”)
+    input           bvalid,         //Ğ´ÇëÇóÏìÓ¦ÎÕÊÖ(Ğ´ÇëÇóÏìÓ¦ÓĞĞ§)
+    output          bready,          //Ğ´ÇëÇóÏìÓ¦ÎÕÊÖ(master¶Ë×¼±¸ºÃ½ÓÊÕĞ´ÏìÓ¦)
+
+    // icache rd interface
+    input               	icache_rd_req,
+    input   	[ 2:0]      icache_rd_type,
+    input   	[31:0]      icache_rd_addr,
+    output              	icache_rd_rdy,		// icache_addr_ok
+    output              	icache_ret_valid,	// icache_data_ok
+	output					icache_ret_last,
+    output  	[31:0]      icache_ret_data
 );
 
+wire           inst_req = icache_rd_req;
+wire           inst_wr = 1'b0;
+wire  [1:0]    inst_size = 2'b10;
+wire  [31:0]   inst_addr = icache_rd_addr;
+wire  [3:0]    inst_wstrb = 4'b0;
+wire  [31:0]   inst_wdata = 32'b0;
+wire  [31:0]   inst_rdata;
+assign         icache_ret_data = inst_rdata;
+wire           inst_addr_ok;
+assign         icache_rd_rdy = inst_addr_ok;
+wire           inst_data_ok; 
+assign         icache_ret_valid = inst_data_ok;
+assign         icache_ret_last = (r_cur_state == R_INST && r_next_state == R_START && rlast);
 
-   //è¯»è¯·æ±‚çŠ¶æ€æœº
+            //¶ÁÇëÇó×´Ì¬»ú
 localparam  AR_START        = 3'b001,
             AR_DATA         = 3'b010,
             AR_INST         = 3'b100,
 
-            //è¯»å“åº”çŠ¶æ€æœº
+            //¶ÁÏìÓ¦×´Ì¬»ú
             R_START         = 3'b001,
             R_DATA          = 3'b010,
             R_INST          = 3'b100,
 
-            //å†™è¯·æ±‚ã€æ•°æ®çŠ¶æ€æœº
+            //Ğ´ÇëÇó£¬Ğ´Êı¾İ×´Ì¬»ú
             AW_START        = 3'b001,
             AW_DATA         = 3'b010,
             W_DATA          = 3'b100,
 
-            //å†™å“åº”çŠ¶æ€æœº
+            //Ğ´ÏìÓ¦×´Ì¬»ú
             B_START         = 2'b01,
             B_DATA          = 2'b10;
 
@@ -130,10 +152,10 @@ reg [1:0] b_next_state;
 wire reset;
 assign reset = ~resetn;
 
-wire need_wait;  //å†™åè¯»å†²çªï¼Œéœ€è¦ç­‰å¾…
+wire need_wait;  //Ğ´ºó¶Á³åÍ»£¬ĞèÒªµÈ´ı
 assign need_wait = 1'b0;
 
-/*---------------------------------è¯»è¯·æ±‚çŠ¶æ€æœº-------------------------------------*/
+/*---------------------------------¶ÁÇëÇó×´Ì¬»ú-------------------------------------*/
 always @(posedge clk)
     begin
         if(reset)
@@ -174,7 +196,7 @@ always @(*)
 
 /*---------------------------------------------------------------------------------*/
 
-/*---------------------------------è¯»å“åº”çŠ¶æ€æœº-------------------------------------*/
+/*---------------------------------¶ÁÏìÓ¦×´Ì¬»ú-------------------------------------*/
 
 always @(posedge clk)
     begin
@@ -190,7 +212,7 @@ always @(*)
             R_START:
                 begin
                     //deal with data_req first
-                    if(rd_data_req && ~need_wait)
+                    if((rd_data_req || rd_data_req_reg) && ~need_wait)
                         r_next_state = R_DATA;
                     else if(rd_inst_req)
                         r_next_state = R_INST;
@@ -199,7 +221,7 @@ always @(*)
                 end
             R_INST:
                 begin
-                    if(rvalid && rready)
+                    if(rvalid && rready && rlast)
                         r_next_state = R_START;
                     else
                         r_next_state = R_INST;
@@ -216,7 +238,7 @@ always @(*)
 
 /*---------------------------------------------------------------------------------*/
 
-/*---------------------------------å†™è¯·æ±‚çŠ¶æ€æœº-------------------------------------*/
+/*---------------------------------Ğ´ÇëÇó×´Ì¬»ú-------------------------------------*/
 always @(posedge clk)
     begin
         if(reset)
@@ -255,7 +277,7 @@ always @(*)
 
 /*---------------------------------------------------------------------------------*/
 
-/*---------------------------------å†™å“åº”çŠ¶æ€æœº-------------------------------------*/
+/*---------------------------------Ğ´ÏìÓ¦×´Ì¬»ú-------------------------------------*/
 always @(posedge clk)
     begin
         if(reset)
@@ -290,15 +312,37 @@ always @(*)
 wire arid_for_inst;
 wire arid_for_data;
 
-assign arid_for_inst = ~arid[0];      //arid == 4'd0 è¯»æŒ‡
-assign arid_for_data = arid[0];       //arid == 4'd1 è¯»æ•°
+assign arid_for_inst = ~arid[0];      //arid == 4'd0 ¶ÁÖ¸
+assign arid_for_data = arid[0];       //arid == 4'd1 ¶ÁÊı
+
+reg arid_for_inst_reg;
+always @(posedge clk ) begin
+    if (reset)
+        arid_for_inst_reg <= 1'b0;
+    else if(arid_for_inst)
+        arid_for_inst_reg <= 1'b1;
+    else if (rlast) 
+        arid_for_inst_reg <= 1'b0;
+end
 
 wire rd_inst_req;
 wire wr_inst_req;
 wire rd_data_req;
 wire wr_data_req;
 
-//wr --> 0è¯» ; 1å†™
+reg rd_data_req_reg;
+always @(posedge clk ) begin
+    if(reset)
+        rd_data_req_reg <= 1'b0;
+    else if(r_cur_state != R_START && rd_data_req)
+        rd_data_req_reg <= 1'b1;
+    else if(r_cur_state != R_START && !rd_data_req)
+        rd_data_req_reg <= rd_data_req_reg;
+    else
+        rd_data_req_reg <= 1'b0;
+end
+
+//wr --> 0??? ; 1???
 assign rd_inst_req = inst_req && ~inst_wr;      
 assign wr_inst_req = inst_req && inst_wr;
 assign rd_data_req = data_req && ~data_wr;
@@ -317,9 +361,9 @@ always @(posedge clk)
         if(reset)
             arid_reg <= 4'd0;
         else if(ar_cur_state == AR_START && rd_data_req)
-            arid_reg <= 4'd1;   //1 --> å–æ•°
+            arid_reg <= 4'd1;   //1 --> È¡Êı
         else if(ar_cur_state == AR_START && rd_inst_req)
-            arid_reg <= 4'd0;   //0 --> å–æŒ‡
+            arid_reg <= 4'd0;   //0 --> È¡Ö¸
         /*
         else if(ar_cur_state == AR_DATA && (arvalid && arready))
             arid_reg <= 4'd0;
@@ -366,7 +410,7 @@ always @(posedge clk)
 
 assign arid    = arid_reg;
 assign araddr  = araddr_reg;
-assign arlen   = 8'b0;
+assign arlen   = arid ? 8'd0 : 8'd3;
 assign arsize  = arsize_reg;
 assign arburst = 2'b1;
 assign arlock  = 1'b0;
@@ -518,7 +562,7 @@ always @(posedge clk)
     begin
         if(reset)
             inst_rdata_reg <= 32'b0;
-        else if(r_cur_state == R_INST && arid_for_inst && rvalid)
+        else if(r_cur_state == R_INST && (arid_for_inst | arid_for_inst_reg) && rvalid)
             inst_rdata_reg <= rdata;
         /*  if temp_inst need it , can't clear it
         else if(r_cur_state == R_START)

@@ -268,7 +268,7 @@ always @(posedge clk)
             ms_to_ws_bus_reg <= 0;
         else if(ms_to_ws_valid && ws_allow_in)
             ms_to_ws_bus_reg <= ms_to_ws_bus;
-        else if((wb_ex || ertn_flush || tlb_reflush) && ws_valid)
+        else if((wb_ex || ertn_flush || tlb_reflush || if_ws_crush_with_tlbsrch) && ws_valid)
             ms_to_ws_bus_reg <= 0;
     end 
 

@@ -48,17 +48,17 @@ module stage3_EX(
     input        tlb_reflush,
 
     //for translate
-    input crmd_da,      //ÂΩìÂâçÁøªËØëÊ®°Âºè
+    input crmd_da,      //µ±«∞∑≠“Îƒ£ Ω
     input crmd_pg,
 
-    input [1:0] plv,    //ÂΩìÂâçÁâπÊùÉÁ≠âÁ∫ß, 0-3, 0‰∏∫ÊúÄÈ´ò
-    input [1:0] datm,    //Áõ¥Êé•Âú∞ÂùÄÁøªËØëÊ®°Âºè‰∏ãÔºåload/storeÊìç‰ΩúÁöÑÂ≠òÂÇ®ËÆøÈóÆÁ±ªÂûã
+    input [1:0] plv,    //µ±«∞Ãÿ»®µ»º∂, 0-3, 0Œ™◊Ó∏ﬂ
+    input [1:0] datm,    //÷±Ω”µÿ÷∑∑≠“Îƒ£ Ωœ¬£¨load/store≤Ÿ◊˜µƒ¥Ê¥¢∑√Œ ¿‡–Õ
 
-    input DMW0_PLV0,        //‰∏∫1Ë°®Á§∫Âú®PLV0‰∏ãÂèØ‰ª•‰ΩøÁî®ËØ•Á™óÂè£ËøõË°åÁõ¥Êé•Êò†Â∞ÑÂú∞ÂùÄÁøªËØë
-    input DMW0_PLV3,        //‰∏∫1Ë°®Á§∫Âú®PLV3‰∏ãÂèØ‰ª•‰ΩøÁî®ËØ•Á™óÂè£ËøõË°åÁõ¥Êé•Êò†Â∞ÑÂú∞ÂùÄÁøªËØë
-    input [1:0] DMW0_MAT,   //ËôöÂú∞ÂùÄËêΩÂú®ËØ•Êò†Â∞ÑÁ™óÂè£‰∏ãËÆøÂ≠òÊìç‰ΩúÁöÑÂ≠òÂÇ®Á±ªÂûãËÆøÈóÆ
-    input [2:0] DMW0_PSEG,  //Áõ¥Êé•Êò†Â∞ÑÁ™óÂè£Áâ©ÁêÜÂú∞ÂùÄÈ´ò3‰Ωç
-    input [2:0] DMW0_VSEG,  //Áõ¥Êé•Êò†Â∞ÑÁ™óÂè£ËôöÂú∞ÂùÄÈ´ò3‰Ωç
+    input DMW0_PLV0,        //Œ™1±Ì æ‘⁄PLV0œ¬ø…“‘ π”√∏√¥∞ø⁄Ω¯––÷±Ω””≥…‰µÿ÷∑∑≠“Î
+    input DMW0_PLV3,        //Œ™1±Ì æ‘⁄PLV3œ¬ø…“‘ π”√∏√¥∞ø⁄Ω¯––÷±Ω””≥…‰µÿ÷∑∑≠“Î
+    input [1:0] DMW0_MAT,   //–Èµÿ÷∑¬‰‘⁄∏√”≥…‰¥∞ø⁄œ¬∑√¥Ê≤Ÿ◊˜µƒ¥Ê¥¢¿‡–Õ∑√Œ 
+    input [2:0] DMW0_PSEG,  //÷±Ω””≥…‰¥∞ø⁄ŒÔ¿Ìµÿ÷∑∏ﬂ3Œª
+    input [2:0] DMW0_VSEG,  //÷±Ω””≥…‰¥∞ø⁄–Èµÿ÷∑∏ﬂ3Œª
 
 
     input DMW1_PLV0,        
@@ -79,11 +79,11 @@ module stage3_EX(
 
 /*------------------------------------------------------------*/
 /*
-1: es_ex_loadstore_tlb_refill   TLBÈáçÂ°´‰æãÂ§ñ
-2: es_ex_load_invalid           loadÊìç‰ΩúÈ°µÊó†Êïà‰æãÂ§ñ
-3: es_ex_store_invalid          storeÊìç‰ΩúÈ°µÊó†Êïà‰æãÂ§ñ
-4: es_ex_loadstore_plv_invalid  È°µÁâπÊùÉÁ≠âÁ∫ß‰∏çÂêàËßÑ‰æãÂ§ñ
-5Ôºöes_ex_store_dirty               È°µ‰øÆÊîπ‰æãÂ§ñ 
+1: es_ex_loadstore_tlb_refill   TLB÷ÿÃÓ¿˝Õ‚
+2: es_ex_load_invalid           load≤Ÿ◊˜“≥Œﬁ–ß¿˝Õ‚
+3: es_ex_store_invalid          store≤Ÿ◊˜“≥Œﬁ–ß¿˝Õ‚
+4: es_ex_loadstore_plv_invalid  “≥Ãÿ»®µ»º∂≤ª∫œπÊ¿˝Õ‚
+5£∫es_ex_store_dirty               “≥–ﬁ∏ƒ¿˝Õ‚ 
 */
 
 wire es_ex_loadstore_tlb_fill;
@@ -436,8 +436,8 @@ assign if_es_has_int = es_ex_syscall || es_ertn_flush || es_ex_ADEF || es_ex_ALE
                 || es_ex_fetch_tlb_refill || es_ex_inst_invalid || es_ex_fetch_plv_invalid
                 || es_ex_loadstore_tlb_fill || es_ex_load_invalid || es_ex_store_invalid
                 || es_ex_loadstore_plv_invalid || es_ex_store_dirty ;
-// ÂΩìMSÁ∫ßÁöÑallowin1Êó∂ÂÜçÂèëÂá∫reqÔºåÊòØ‰∏∫‰∫Ü‰øùËØÅreq‰∏éaddr_okÊè°ÊâãÊó∂allowin‰πüÊòØÊãâÈ´ò
-// ÂΩìesÊµÅÊ∞¥Á∫ßÊàñms,wsÊúâÂºÇÂ∏∏Êó∂ÈòªÊ≠¢ËÆøÂ≠òÔºå‰∏∫‰∫ÜÁª¥Êä§Á≤æÁ°ÆÂºÇÂ∏∏
+// µ±MSº∂µƒallowin1 ±‘Ÿ∑¢≥ˆreq£¨ «Œ™¡À±£÷§req”Îaddr_okŒ’ ÷ ±allowin“≤ «¿≠∏ﬂ
+// µ±es¡˜ÀÆº∂ªÚms,ws”–“Ï≥£ ±◊Ë÷π∑√¥Ê£¨Œ™¡ÀŒ¨ª§æ´»∑“Ï≥£
 assign data_sram_req = (ms_allow_in && no_exception) && (es_res_from_mem || es_mem_we) && es_valid;
 
 reg es_valid;
@@ -451,17 +451,18 @@ always @(posedge clk)
 
 wire es_ready_go;
 
-assign es_ready_go = if_es_has_int ? 1'b1 : 
-                    (es_mem_we || es_res_from_mem) ? (data_sram_req && data_sram_addr_ok) : 
-                    (!es_div_op[0] | (current_state==OUT_WAIT & out_valid | current_state==UOUT_WAIT & out_u_valid)) ;//‰∏çÁ°ÆÂÆöÊòØÂê¶ÊúâÈÄªËæëÈóÆÈ¢ò
+assign es_ready_go = block_with_tlbsrch ? 1'b0 :
+                     if_es_has_int ? 1'b1 : 
+                     (es_mem_we || es_res_from_mem) ? (data_sram_req && data_sram_addr_ok) : 
+                     (!es_div_op[0] | (current_state==OUT_WAIT & out_valid | current_state==UOUT_WAIT & out_u_valid)) ;//≤ª»∑∂® «∑Ò”–¬ﬂº≠Œ Ã‚
 
-assign es_allow_in = !es_valid || es_ready_go && ms_allow_in &&
-     (current_state == EXE | current_state==OUT_WAIT & out_valid |
-      current_state==UOUT_WAIT & out_u_valid);
+assign es_allow_in = (!es_valid || es_ready_go && ms_allow_in &&
+                      (current_state == EXE | current_state==OUT_WAIT & out_valid | current_state==UOUT_WAIT & out_u_valid));
 
 assign es_to_ms_valid = es_valid && es_ready_go;
 
-
+wire block_with_tlbsrch;
+assign block_with_tlbsrch = es_inst_tlbsrch && (if_ms_crush_with_tlbsrch || if_ws_crush_with_tlbsrch);
 
 //task 11 add Unaligned memory access, so addr[1:0] should be 2'b00
 wire [3:0] w_strb;  //depend on st_op
@@ -496,10 +497,10 @@ wire [31:0] address_ptt;
 assign address_ptt = {s1_ppn, es_vaddr[11:0]};
 
 wire if_dt;
-assign if_dt = crmd_da & ~crmd_pg;   //da=1, pg=0 --> Áõ¥Êé•Âú∞ÂùÄÁøªËØëÊ®°Âºè
+assign if_dt = crmd_da & ~crmd_pg;   //da=1, pg=0 --> ÷±Ω”µÿ÷∑∑≠“Îƒ£ Ω
 
 wire if_indt;
-assign if_indt = ~crmd_da & crmd_pg;   //da=0, pg=1 --> Êò†Â∞ÑÂú∞ÂùÄÁøªËØëÊ®°Âºè
+assign if_indt = ~crmd_da & crmd_pg;   //da=0, pg=1 --> ”≥…‰µÿ÷∑∑≠“Îƒ£ Ω
 
 wire if_dmw0;
 assign if_dmw0 = ((plv == 0 && DMW0_PLV0) || (plv == 3 && DMW0_PLV3)) &&

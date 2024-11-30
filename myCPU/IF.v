@@ -33,18 +33,18 @@ module stage1_IF(
 
 
     //for translate
-    input crmd_da,      //å½“å‰ç¿»è¯‘æ¨¡å¼
+    input crmd_da,      //µ±Ç°·­ÒëÄ£Ê½
     input crmd_pg,
-    input [1:0] crmd_datf,//ç›´æ¥åœ°å€ç¿»è¯‘æ¨¡å¼ä¸‹ï¼Œå–æŒ‡æ“ä½œçš„å­˜å‚¨è®¿é—®ç±»å‹
+    input [1:0] crmd_datf,//Ö±½ÓµØÖ··­ÒëÄ£Ê½ÏÂ£¬È¡Ö¸²Ù×÷µÄ´æ´¢·ÃÎÊÀàĞÍ
     input [1:0] crmd_datm,
 
-    input [1:0] plv,    //å½“å‰ç‰¹æƒç­‰çº§, 0-3, 0ä¸ºæœ€é«˜
+    input [1:0] plv,    //µ±Ç°ÌØÈ¨µÈ¼¶, 0-3, 0Îª×î¸ß
 
-    input DMW0_PLV0,        //ä¸º1è¡¨ç¤ºåœ¨PLV0ä¸‹å¯ä»¥ä½¿ç”¨è¯¥çª—å£è¿›è¡Œç›´æ¥æ˜ å°„åœ°å€ç¿»è¯‘
-    input DMW0_PLV3,        //ä¸º1è¡¨ç¤ºåœ¨PLV3ä¸‹å¯ä»¥ä½¿ç”¨è¯¥çª—å£è¿›è¡Œç›´æ¥æ˜ å°„åœ°å€ç¿»è¯‘
-    input [1:0] DMW0_MAT,   //è™šåœ°å€è½åœ¨è¯¥æ˜ å°„çª—å£ä¸‹è®¿å­˜æ“ä½œçš„å­˜å‚¨ç±»å‹è®¿é—®
-    input [2:0] DMW0_PSEG,  //ç›´æ¥æ˜ å°„çª—å£ç‰©ç†åœ°å€é«˜3ä½
-    input [2:0] DMW0_VSEG,  //ç›´æ¥æ˜ å°„çª—å£è™šåœ°å€é«˜3ä½
+    input DMW0_PLV0,        //Îª1±íÊ¾ÔÚPLV0ÏÂ¿ÉÒÔÊ¹ÓÃ¸Ã´°¿Ú½øĞĞÖ±½ÓÓ³ÉäµØÖ··­Òë
+    input DMW0_PLV3,        //Îª1±íÊ¾ÔÚPLV3ÏÂ¿ÉÒÔÊ¹ÓÃ¸Ã´°¿Ú½øĞĞÖ±½ÓÓ³ÉäµØÖ··­Òë
+    input [1:0] DMW0_MAT,   //ĞéµØÖ·ÂäÔÚ¸ÃÓ³Éä´°¿ÚÏÂ·Ã´æ²Ù×÷µÄ´æ´¢ÀàĞÍ·ÃÎÊ
+    input [2:0] DMW0_PSEG,  //Ö±½ÓÓ³Éä´°¿ÚÎïÀíµØÖ·¸ß3Î»
+    input [2:0] DMW0_VSEG,  //Ö±½ÓÓ³Éä´°¿ÚĞéµØÖ·¸ß3Î»
 
     input DMW1_PLV0,        
     input DMW1_PLV3,       
@@ -52,7 +52,7 @@ module stage1_IF(
     input [2:0] DMW1_PSEG,  
     input [2:0] DMW1_VSEG,
 
-    //for é¡µè¡¨æ˜ å°„
+    //for Ò³±íÓ³Éä
     input [9:0] tlbasid_asid,
 
     output [18:0] s0_vppn,
@@ -63,13 +63,16 @@ module stage1_IF(
     input [1:0] s0_plv,
     input s0_v,
 
-    input in_ex_tlb_refill
+    input in_ex_tlb_refill,
+
+    //ICACHE ADD!
+    output wire [31:0]  inst_addr_vrtl
 );
 
 /*--------------------------------pipeline control-----------------------------*/
 
-// pre_ifä¼ªæµæ°´çº§çš„å·¥ä½œå®¤å‘å‡ºå–æŒ‡è¯·æ±‚
-// å½“IFçº§çš„allowinä¸º1æ—¶å†å‘å‡ºreqï¼Œæ˜¯ä¸ºäº†ä¿è¯reqä¸addr_okæ¡æ‰‹æ—¶allowinä¹Ÿæ˜¯æ‹‰é«˜çš„
+// pre_ifÎ±Á÷Ë®¼¶µÄ¹¤×÷ÊÒ·¢³öÈ¡Ö¸ÇëÇó
+// µ±IF¼¶µÄallowinÎª1Ê±ÔÙ·¢³öreq£¬ÊÇÎªÁË±£Ö¤reqÓëaddr_okÎÕÊÖÊ±allowinÒ²ÊÇÀ­¸ßµÄ
 assign inst_sram_req = (reset || br_stall) ? 1'b0 : fs_allow_in ? inst_sram_req_reg : 1'b0;
 
 reg inst_sram_req_reg;
@@ -78,24 +81,24 @@ always @(posedge clk)
         if(reset)
             inst_sram_req_reg <= 1'b1;
         else if(inst_sram_req && inst_sram_addr_ok)
-            //æ¡æ‰‹æˆåŠŸï¼Œåœ¨æ¡æ‰‹æˆåŠŸçš„ä¸‹ä¸€ä¸ªæ—¶é’Ÿä¸Šæ²¿æ‹‰ä½req
+            //ÎÕÊÖ³É¹¦£¬ÔÚÎÕÊÖ³É¹¦µÄÏÂÒ»¸öÊ±ÖÓÉÏÑØÀ­µÍreq
             inst_sram_req_reg <= 1'b0;
         else if(inst_sram_data_ok)
-            //åœ¨æ¡æ‰‹æ¥æ”¶åˆ°æ•°æ®(data_ok)æ—¶ï¼Œé‡æ–°æ‹‰é«˜req
+            //ÔÚÎÕÊÖ½ÓÊÕµ½Êı¾İ(data_ok)Ê±£¬ÖØĞÂÀ­¸ßreq
             inst_sram_req_reg <= 1'b1;
     end
 
-/*å½“reqä¸addr_okæ¡æ‰‹æˆåŠŸæ—¶ï¼Œä»£è¡¨è¯·æ±‚å‘é€æˆåŠŸï¼Œæ‹‰é«˜ready_go*/
+/*µ±reqÓëaddr_okÎÕÊÖ³É¹¦Ê±£¬´ú±íÇëÇó·¢ËÍ³É¹¦£¬À­¸ßready_go*/
 wire pre_if_ready_go;
 assign pre_if_ready_go = inst_sram_req & inst_sram_addr_ok;
 wire pre_if_to_fs_valid;
 assign pre_if_to_fs_valid = !reset & pre_if_ready_go;
 
 /*
-å½“data_okæ‹‰é«˜æ—¶ä»£è¡¨å·²é€æ¥æŒ‡ä»¤ç ï¼Œå°†fs_ready_goæ‹‰é«˜
-å½“temp_instæœ‰æ•ˆæ—¶è¯´æ˜fs_ready_goå·²ç»æ‹‰é«˜ï¼Œè€Œds_allow_inæ²¡æ‹‰é«˜
-å› æ­¤æ­¤æ—¶åœ¨ç­‰ds_allow_inï¼Œéœ€è¦ä¿æŒtemp_instæ‹‰é«˜
-åŒæ—¶å½“deal_with_cancelæ‹‰é«˜æ—¶ï¼Œè¡¨æ˜éœ€è¦ä¸¢å¼ƒä¸‹ä¸€ä¸ªæ”¶åˆ°çš„é”™è¯¯æŒ‡ä»¤ï¼Œå³å°†fs_ready_goæ‹‰ä½
+µ±data_okÀ­¸ßÊ±´ú±íÒÑËÍÀ´Ö¸ÁîÂë£¬½«fs_ready_goÀ­¸ß
+µ±temp_instÓĞĞ§Ê±ËµÃ÷fs_ready_goÒÑ¾­À­¸ß£¬¶øds_allow_inÃ»À­¸ß
+Òò´Ë´ËÊ±ÔÚµÈds_allow_in£¬ĞèÒª±£³Ötemp_instÀ­¸ß
+Í¬Ê±µ±deal_with_cancelÀ­¸ßÊ±£¬±íÃ÷ĞèÒª¶ªÆúÏÂÒ»¸öÊÕµ½µÄ´íÎóÖ¸Áî£¬¼´½«fs_ready_goÀ­µÍ
 assign fs_ready_go = deal_with_cancel ? (inst_sram_data_ok ? 1'b1: 1'b0) : ((temp_inst != 0) || inst_sram_data_ok);
 */
 wire fs_ready_go;
@@ -110,9 +113,9 @@ always @(posedge clk)
             begin
                 if(wb_ex || ertn_flush) 
                    /*
-                    IFçº§æ²¡æœ‰æœ‰æ•ˆæŒ‡ä»¤ æˆ– æœ‰æ•ˆæŒ‡ä»¤å°†è¦æµå‘IDçº§ï¼Œ
-                    è‹¥æ”¶åˆ°cancel
-                    åˆ™å°†ä¸‹ä¸€æ‹fs_vaildç½®0
+                    IF¼¶Ã»ÓĞÓĞĞ§Ö¸Áî »ò ÓĞĞ§Ö¸Áî½«ÒªÁ÷ÏòID¼¶£¬
+                    ÈôÊÕµ½cancel
+                    Ôò½«ÏÂÒ»ÅÄfs_vaildÖÃ0
                     */
                     fs_valid <= 1'b0;
                 else
@@ -127,9 +130,9 @@ assign fs_allow_in = !fs_valid || (fs_ready_go && ds_allow_in) || (deal_with_can
 assign fs_to_ds_valid = fs_valid && fs_ready_go;
 
 /*
-å½“fs_ready_go = 1 è€Œ ds_allow_in = 0 æ—¶
-IFçº§æ”¶åˆ°äº†æŒ‡ä»¤ä½†æ˜¯IDçº§è¿˜ä¸è®©è¿›å…¥ï¼Œéœ€è¦è®¾ç½®ä¸€ç»„è§¦å‘å™¨æ¥ä¿å­˜å–å‡ºçš„æŒ‡ä»¤
-å½“è¯¥ç»„è§¦å‘å™¨æœ‰æœ‰æ•ˆæ•°æ®æ—¶ï¼Œåˆ™é€‰æ‹©è¯¥ç»„è§¦å‘å™¨ä¿å­˜çš„æ•°æ®ä½œä¸ºIFçº§å–å›çš„æŒ‡ä»¤é€å¾€IDçº§
+µ±fs_ready_go = 1 ¶ø ds_allow_in = 0 Ê±
+IF¼¶ÊÕµ½ÁËÖ¸Áîµ«ÊÇID¼¶»¹²»ÈÃ½øÈë£¬ĞèÒªÉèÖÃÒ»×é´¥·¢Æ÷À´±£´æÈ¡³öµÄÖ¸Áî
+µ±¸Ã×é´¥·¢Æ÷ÓĞÓĞĞ§Êı¾İÊ±£¬ÔòÑ¡Ôñ¸Ã×é´¥·¢Æ÷±£´æµÄÊı¾İ×÷ÎªIF¼¶È¡»ØµÄÖ¸ÁîËÍÍùID¼¶
 */
 reg [31:0] temp_inst;
 always @(posedge clk)
@@ -138,25 +141,29 @@ always @(posedge clk)
             temp_inst <= 0;
         else if(fs_ready_go)
             begin
-                if(wb_ex || ertn_flush) 
-                    //å½“cancelæ—¶ï¼Œå°†ç¼“å­˜æŒ‡ä»¤æ¸…0
+                if(wb_ex || ertn_flush)
+                    //µ±cancelÊ±£¬½«»º´æÖ¸ÁîÇå0
                     temp_inst <= 0;
-                else if(!ds_allow_in)
-                    //æš‚å­˜æŒ‡ä»¤
+                else if(!ds_allow_in && inst_sram_data_ok)
+                    //Ôİ´æÖ¸Áî
                     temp_inst <= inst_sram_rdata;
-                else
-                    //å½“dså…è®¸è¿›å…¥æ—¶ï¼Œåœ¨è¿™ä¸ªæ—¶é’Ÿä¸Šæ²¿å°±ç«‹åˆ»å°†temp_inst
-                    //é€å…¥dsçº§ï¼ŒåŒæ—¶å°†temp_instæ¸…é›¶ï¼Œä»£è¡¨è¯¥æŒ‡ä»¤ç¼“å­˜ä¸å†æœ‰æœ‰æ•ˆæŒ‡ä»¤
+                else if (!ds_allow_in && !inst_sram_data_ok) 
+                    //µ±ds²»ÔÊĞí½øÈëÊ±£¬½«temp_inst±£³Ö²»±ä
+                    //µ±dsÔÊĞí½øÈëÊ±£¬ÔÚÕâ¸öÊ±ÖÓÉÏÑØ¾ÍÁ¢¿Ì½«temp_inst
+                    //ËÍÈëds¼¶£¬Í¬Ê±½«temp_instÇåÁã£¬´ú±í¸ÃÖ¸Áî»º´æ²»ÔÙÓĞÓĞĞ§Ö¸Áî
+                    temp_inst <= temp_inst;
+                else 
+                    //µ±dsÔÊĞí½øÈëÊ±£¬½«temp_instËÍÈëds¼¶£¬Í¬Ê±ÇåÁã
                     temp_inst <= 0;
             end
     end
 
 /*
-ä¸ºäº†è§£å†³åœ¨cancelåï¼ŒIFçº§åç»­æ”¶åˆ°çš„ç¬¬ä¸€ä¸ªè¿”å›çš„æŒ‡ä»¤æ•°æ®æ˜¯å¯¹å½“å‰è¢«cancelçš„å–å€¼æŒ‡ä»¤çš„è¿”å›
-å› æ­¤åç»­æ”¶åˆ°çš„ç¬¬ä¸€ä¸ªè¿”å›çš„æŒ‡ä»¤æ•°æ®éœ€è¦è¢«ä¸¢å¼ƒï¼Œä¸èƒ½è®©å…¶æµå‘IDçº§ã€‚
-éœ€è¦ç»´æŠ¤ä¸€ä¸ªè§¦å‘å™¨ï¼Œå¤ä½å€¼ä¸º0ï¼Œé‡åˆ°ä¸Šè¿°é—®é¢˜å°†è¯¥è§¦å‘å™¨ç½®1ï¼Œå½“æ”¶åˆ°data_okæ—¶å¤ç½®0
-å½“è¯¥è§¦å‘å™¨ä¸º1æ—¶ï¼Œå°†IFçº§çš„ready_goæŠ¹é›¶ï¼Œå³å½“data_okæ¥ä¸´çš„æ—¶é’Ÿä¸Šæ²¿ï¼Œfs_ready_go
-æ°å¥½ä»ä¸º0ï¼Œå¯¼è‡´åˆšå¥½ä¸¢å¼ƒäº†dataï¼ˆä¸¢å¼ƒçš„æŒ‡ä»¤ï¼‰ 
+ÎªÁË½â¾öÔÚcancelºó£¬IF¼¶ºóĞøÊÕµ½µÄµÚÒ»¸ö·µ»ØµÄÖ¸ÁîÊı¾İÊÇ¶Ôµ±Ç°±»cancelµÄÈ¡ÖµÖ¸ÁîµÄ·µ»Ø
+Òò´ËºóĞøÊÕµ½µÄµÚÒ»¸ö·µ»ØµÄÖ¸ÁîÊı¾İĞèÒª±»¶ªÆú£¬²»ÄÜÈÃÆäÁ÷ÏòID¼¶¡£
+ĞèÒªÎ¬»¤Ò»¸ö´¥·¢Æ÷£¬¸´Î»ÖµÎª0£¬Óöµ½ÉÏÊöÎÊÌâ½«¸Ã´¥·¢Æ÷ÖÃ1£¬µ±ÊÕµ½data_okÊ±¸´ÖÃ0
+µ±¸Ã´¥·¢Æ÷Îª1Ê±£¬½«IF¼¶µÄready_goÄ¨Áã£¬¼´µ±data_okÀ´ÁÙµÄÊ±ÖÓÉÏÑØ£¬fs_ready_go
+Ç¡ºÃÈÔÎª0£¬µ¼ÖÂ¸ÕºÃ¶ªÆúÁËdata£¨¶ªÆúµÄÖ¸Áî£© 
 */
 reg deal_with_cancel;
 always @(posedge clk)
@@ -164,18 +171,18 @@ always @(posedge clk)
         if(reset)
             deal_with_cancel <= 1'b0;
         else if((wb_ex || ertn_flush ) && pre_if_to_fs_valid) 
-            //pre_if_to_fs_valid å¯¹åº”pre-ifå‘é€çš„åœ°å€æ­£å¥½è¢«æ¥æ”¶
+            //pre_if_to_fs_valid ¶ÔÓ¦pre-if·¢ËÍµÄµØÖ·ÕıºÃ±»½ÓÊÕ
             deal_with_cancel <= 1'b1;
         else if(~fs_allow_in && (wb_ex || ertn_flush ) && ~fs_ready_go)
-            //~fs_allow_in ä¸” ~fs_ready_go å¯¹åº”IFçº§æ­£åœ¨ç­‰å¾…data_ok
+            //~fs_allow_in ÇÒ ~fs_ready_go ¶ÔÓ¦IF¼¶ÕıÔÚµÈ´ıdata_ok
             deal_with_cancel <= 1'b1;
         else if(inst_sram_data_ok)
             deal_with_cancel <= 1'b0;
     end
 
 
-wire [31:0] br_target; //è·³è½¬åœ°å€
-wire br_taken;         //æ˜¯å¦è·³è½¬
+wire [31:0] br_target; //Ìø×ªµØÖ·
+wire br_taken;         //ÊÇ·ñÌø×ª
 wire br_stall;         //exp14 
 wire br_taken_cancel;
 assign {br_taken_cancel, br_stall, br_taken, br_target} = br_bus;
@@ -215,10 +222,10 @@ assign s0_asid = tlbasid_asid;
 
 //choose next_pc
 wire if_dt;
-assign if_dt = crmd_da & ~crmd_pg;   //da=1, pg=0 --> ç›´æ¥åœ°å€ç¿»è¯‘æ¨¡å¼
+assign if_dt = crmd_da & ~crmd_pg;   //da=1, pg=0 --> Ö±½ÓµØÖ··­ÒëÄ£Ê½
 
 wire if_indt;
-assign if_indt = ~crmd_da & crmd_pg;   //da=0, pg=1 --> æ˜ å°„åœ°å€ç¿»è¯‘æ¨¡å¼
+assign if_indt = ~crmd_da & crmd_pg;   //da=0, pg=1 --> Ó³ÉäµØÖ··­ÒëÄ£Ê½
 
 wire if_dmw0;
 assign if_dmw0 = ((plv == 0 && DMW0_PLV0) || (plv == 3 && DMW0_PLV3)) &&
@@ -235,15 +242,18 @@ wire [31:0] next_pc_p;
 assign next_pc_p = if_dt ? next_pc_dt : if_indt ? 
                 (if_dmw0 ? next_pc_dmw0 : if_dmw1 ? next_pc_dmw1 : next_pc_ptt) : 0;
 
+
+//inst_addr_vrtl
+assign inst_addr_vrtl = next_pc;
 /*-----------------------------------------------------------------------*/
 
 /*
-1: fs_ex_fetch_tlb_refill         TLBé‡å¡«ä¾‹å¤–
-2: ex_load_invalid                loadæ“ä½œé¡µæ— æ•ˆä¾‹å¤–
-3: ex_store_invalid               storeæ“ä½œé¡µæ— æ•ˆä¾‹å¤–
-4: fs_ex_inst_invalid             å–å€¼æ“ä½œé¡µæ— æ•ˆä¾‹å¤–
-5: fs_ex_fetch_plv_invalid        é¡µç‰¹æƒç­‰çº§ä¸åˆè§„ä¾‹å¤–
-6: ex_store_dirty                 é¡µä¿®æ”¹ä¾‹å¤–  
+1: fs_ex_fetch_tlb_refill         TLBÖØÌîÀıÍâ
+2: ex_load_invalid                load²Ù×÷Ò³ÎŞĞ§ÀıÍâ
+3: ex_store_invalid               store²Ù×÷Ò³ÎŞĞ§ÀıÍâ
+4: fs_ex_inst_invalid             È¡Öµ²Ù×÷Ò³ÎŞĞ§ÀıÍâ
+5: fs_ex_fetch_plv_invalid        Ò³ÌØÈ¨µÈ¼¶²»ºÏ¹æÀıÍâ
+6: ex_store_dirty                 Ò³ĞŞ¸ÄÀıÍâ  
 */
 
 wire fs_ex_fetch_tlb_refill;
@@ -255,8 +265,8 @@ assign fs_ex_inst_invalid = if_ppt & s0_found & ~s0_v;
 assign fs_ex_fetch_plv_invalid = if_ppt & s0_found & s0_v & (plv > s0_plv);
 
 /*
-å½“å‡ºç°å¼‚å¸¸å…¥å£pcã€å¼‚å¸¸è¿”å›pcå’Œè·³è½¬pcæ—¶ï¼Œä¿¡å·å’Œpcå¯èƒ½åªèƒ½ç»´æŒä¸€æ‹ï¼Œ
-ä½†åœ¨reqæ”¶åˆ°addr_okå‰éœ€è¦ç»´æŒå–å€åœ°å€ä¸å˜
+µ±³öÏÖÒì³£Èë¿Úpc¡¢Òì³£·µ»ØpcºÍÌø×ªpcÊ±£¬ĞÅºÅºÍpc¿ÉÄÜÖ»ÄÜÎ¬³ÖÒ»ÅÄ£¬
+µ«ÔÚreqÊÕµ½addr_okÇ°ĞèÒªÎ¬³ÖÈ¡Ö·µØÖ·²»±ä
 */
 reg if_keep_pc;
 reg [31:0] br_delay_reg;
@@ -303,10 +313,10 @@ always @(posedge clk)
     output [31:0]   inst_sram_wdata,   
 */
 
-//inst_sram_reqåœ¨ä¸Šé¢èµ‹ ?
-assign inst_sram_wr    = 1'b0;    //fetché˜¶æ®µåªè¯»ä¸å†™
-assign inst_sram_size  = 2'b10;   //fetché˜¶æ®µè®¿é—®4å­—èŠ‚
-assign inst_sram_wstrb = 4'b0;    //fetché˜¶æ®µwstrbæ— æ„ä¹‰
+//inst_sram_reqÔÚÉÏÃæ¸³ ?
+assign inst_sram_wr    = 1'b0;    //fetch½×¶ÎÖ»¶Á²»Ğ´
+assign inst_sram_size  = 2'b10;   //fetch½×¶Î·ÃÎÊ4×Ö½Ú
+assign inst_sram_wstrb = 4'b0;    //fetch½×¶ÎwstrbÎŞÒâÒå
 assign inst_sram_addr  = next_pc_p;
 assign inst_sram_wdata = 32'b0;
 
@@ -323,7 +333,7 @@ assign fs_ex_ADEF = (if_ppt && next_pc[31]) || (next_pc_p[1] | next_pc_p[0]);  /
 
 //assign fs_to_ds_bus = {fs_exc_ADEF,fetch_inst,fetch_pc};
 //exp14
-//å½“æš‚å­˜æŒ‡ä»¤ç¼“å­˜æœ‰æ•ˆæ—¶ï¼Œä¼ å…¥temp_inst,æ— æ•ˆæ—¶æ­£å¸¸ä¼ å…¥ fetch_inst
+//µ±Ôİ´æÖ¸Áî»º´æÓĞĞ§Ê±£¬´«Èëtemp_inst,ÎŞĞ§Ê±Õı³£´«Èë fetch_inst
 assign fs_to_ds_bus[31:0] = fetch_pc;
 assign fs_to_ds_bus[63:32] = (temp_inst == 0) ? fetch_inst : temp_inst;
 assign fs_to_ds_bus[64:64] = fs_ex_ADEF;

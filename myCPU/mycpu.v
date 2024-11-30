@@ -34,7 +34,10 @@ module mycpu(
     output wire [31:0] debug_wb_pc,
     output wire [ 3:0] debug_wb_rf_we,
     output wire [ 4:0] debug_wb_rf_wnum,
-    output wire [31:0] debug_wb_rf_wdata
+    output wire [31:0] debug_wb_rf_wdata,
+
+    //icache add
+    output wire [31:0] inst_addr_vrtl
 );
 wire         reset;
 assign reset = ~resetn;
@@ -261,6 +264,8 @@ wire ex_tlb_refill;
 
 /*----------------------------------------------------------*/
 
+wire [31:0] inst_addr_vrtl;
+
 /*---------------------------FETCH--------------------------*/
 /*
 module stage1_IF(
@@ -349,7 +354,9 @@ stage1_IF fetch(
     .s0_plv             (s0_plv),
     .s0_v               (s0_v),
 
-    .in_ex_tlb_refill  (ex_tlb_refill)
+    .in_ex_tlb_refill   (ex_tlb_refill),
+
+    .inst_addr_vrtl     (inst_addr_vrtl)
 );
 
 /*----------------------------------------------------------*/

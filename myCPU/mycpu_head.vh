@@ -9,7 +9,7 @@
 
 `define WIDTH_CSR_NUM 14
 
-//寄存器号
+//�Ĵ�����
 `define CSR_CRMD 14'h0
 `define CSR_PRMD 14'h1
 `define CSR_ECFG 14'h4
@@ -35,7 +35,7 @@
 `define CSR_DMW0 14'h180
 `define CSR_DMW1 14'h181
 
-//CSR分区
+//CSR����
 
 //CSR_CRMD
 `define CSR_CRMD_PLV 1:0
@@ -132,22 +132,22 @@
 `define ESUBCODE_TLBR 9'h0
 
 //TLB
-//长度为4，则TLB为2 ^ 4 = 16位
+//����Ϊ4����TLBΪ2 ^ 4 = 16λ
 `define TLB_LEN 4   
 
-//TLBIDX (TLB索引)
+//TLBIDX (TLB����)
 `define TLBIDX_INDEX    3:0
 `define TLBIDX_ZERO1    23:4
 `define TLBIDX_PS       29:24
 `define TLBIDX_ZERO2    30:30
 `define TLBIDX_NE       31:31
 
-//TLBEHI (TLB表项高位)
+//TLBEHI (TLB�����λ)
 `define TLBEHI_ZERO     12:0
 `define TLBEHI_VPPN     31:13
 
-//TLBELO0, TLBELO1 (TLB表项低位)
-//这两个寄存器分别对应双页中的偶数页和奇数页，结构完全相同
+//TLBELO0, TLBELO1 (TLB�����λ)
+//�������Ĵ����ֱ��Ӧ˫ҳ�е�ż��ҳ������ҳ���ṹ��ȫ��ͬ
 `define TLBELO_V        0:0
 `define TLBELO_D        1:1
 `define TLBELO_PLV      3:2
@@ -157,17 +157,17 @@
 `define TLBELO_PPN      27:8
 `define TLBELO_ZERO2    31:28
 
-//ASID (地址空间标识符)
+//ASID (��ַ�ռ��ʶ��)
 `define ASID_ASID       9:0
 `define ASID_ZERO1      15:10
 `define ASID_ASIDBITS   23:16
 `define ASID_ZERO2      31:24
 
-//TLBRENTRY (TLB重填例外入口地址)
+//TLBRENTRY (TLB����������ڵ�ַ)
 `define TLBRENTRY_LOW   5:0     //only read
 `define TLBRENTRY_HIGH  31:6    //read and write
 
-//DMW0,DMW1 (直接映射配置窗口)
+//DMW0,DMW1 (ֱ��ӳ�����ô���)
 `define DMW_PLV0        0:0
 `define DMW_ZERO1       2:1
 `define DMW_PLV3        3:3

@@ -28,7 +28,7 @@ module stage4_MEM(
     input        tlb_reflush
 );
 
-/*-----------------------Êé•Êî∂es_to_ms_bus----------------*/
+/*-----------------------Ω” ’es_to_ms_bus----------------*/
 /*
 assign es_to_ms_bus[31:0] = es_pc;
 assign es_to_ms_bus[32:32] = es_gr_we & ~es_ex_ALE &
@@ -142,7 +142,7 @@ always @(posedge clk)
     begin
         if(reset)
             es_to_ms_bus_reg <= 0;
-        else if(ertn_flush || wb_ex || tlb_reflush)
+        else if(ertn_flush || wb_ex || tlb_reflush || (if_ms_crush_with_tlbsrch && ws_allow_in && ms_ready_go))
             es_to_ms_bus_reg <= 0;
         else if(es_to_ms_valid && ms_allow_in)
             es_to_ms_bus_reg <= es_to_ms_bus;
@@ -150,7 +150,7 @@ always @(posedge clk)
           //  es_to_ms_bus_reg <= 0;
     end 
 //exp14
-//Âä†ÂÖ•ms_mem_we
+//º”»Îms_mem_we
 assign { ms_ex_store_dirty, ms_ex_loadstore_plv_invalid, ms_ex_store_invalid,
         ms_ex_load_invalid, ms_ex_loadstore_tlb_fill, ms_ex_fetch_plv_invalid,
         ms_ex_inst_invalid, ms_ex_fetch_tlb_refill,
@@ -229,8 +229,8 @@ assign ms_to_ws_bus[237:237] = ms_ex_store_dirty;
 reg ms_valid;    
 wire ms_ready_go;
 //exp14
-//ÂΩìÊòØloadÊåá‰ª§Êó∂ÔºåÈúÄË¶ÅÁ≠âÂæÖÊï∞ÊçÆÊè°Êâã
-//data_okÊãâÈ´òÊó∂Ë°®Á§∫storeÂ∑≤ÁªèÂÜôÂÖ•Êï∞ÊçÆ Êàñ loadÂ∑≤ÁªèÂèñÂà∞Êï∞ÊçÆÔºåÂ∞Üms_ready_goÊãâÈ´ò
+//µ± «load÷∏¡Ó ±£¨–Ë“™µ»¥˝ ˝æ›Œ’ ÷
+//data_ok¿≠∏ﬂ ±±Ì æstore“—æ≠–¥»Î ˝æ› ªÚ load“—æ≠»°µΩ ˝æ›£¨Ω´ms_ready_go¿≠∏ﬂ
 assign ms_ready_go = if_ms_has_int ? 1'b1 : (ms_mem_we || ms_res_from_mem) ? data_sram_data_ok : 1'b1;
 assign ms_allow_in = !ms_valid || ms_ready_go && ws_allow_in;
 assign ms_to_ws_valid = (ms_valid && ms_ready_go) & ~ertn_flush & ~wb_ex & ~tlb_reflush;
