@@ -73,7 +73,8 @@ module stage1_IF(
 
 // pre_if伪流水级的工作室发出取指请求
 // 当IF级的allowin为1时再发出req，是为了保证req与addr_ok握手时allowin也是拉高的
-assign inst_sram_req = (reset || br_stall) ? 1'b0 : fs_allow_in ? inst_sram_req_reg : 1'b0;
+assign inst_sram_req =  (reset || br_stall) ? 1'b0 : 
+                        fs_allow_in ? inst_sram_req_reg : 1'b0;
 
 reg inst_sram_req_reg;
 always @(posedge clk)
@@ -102,12 +103,15 @@ assign pre_if_to_fs_valid = !reset & pre_if_ready_go;
 assign fs_ready_go = deal_with_cancel ? (inst_sram_data_ok ? 1'b1: 1'b0) : ((temp_inst != 0) || inst_sram_data_ok);
 */
 wire fs_ready_go;
-assign fs_ready_go = deal_with_cancel ? 1'b0 : ((temp_inst != 0) || inst_sram_data_ok);
+assign fs_ready_go =  deal_with_cancel ? 1'b0 : 
+                      ((temp_inst != 0) || inst_sram_data_ok);
 
 reg fs_valid;    
 always @(posedge clk)
     begin
         if(reset)
+            fs_valid <= 1'b0;
+        else if(wb_ex || ertn_flush)
             fs_valid <= 1'b0;
         else if(fs_allow_in)
             begin
@@ -127,7 +131,7 @@ always @(posedge clk)
 
 wire   fs_allow_in;
 assign fs_allow_in = !fs_valid || (fs_ready_go && ds_allow_in) || (deal_with_cancel && inst_sram_data_ok);
-assign fs_to_ds_valid = fs_valid && fs_ready_go;
+assign fs_to_ds_valid = (fs_valid) && fs_ready_go;
 
 /*
 当fs_ready_go = 1 而 ds_allow_in = 0 时
@@ -141,10 +145,10 @@ always @(posedge clk)
             temp_inst <= 0;
         else if(fs_ready_go)
             begin
-                if(wb_ex || ertn_flush)
+                //if(wb_ex || ertn_flush)
                     //当cancel时，将缓存指令清0
-                    temp_inst <= 0;
-                else if(!ds_allow_in && inst_sram_data_ok)
+                  //  temp_inst <= 0;
+                if(!ds_allow_in && inst_sram_data_ok)
                     //暂存指令
                     temp_inst <= inst_sram_rdata;
                 else if (!ds_allow_in && !inst_sram_data_ok) 

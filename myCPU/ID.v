@@ -735,7 +735,7 @@ assign ds_allow_in = !ds_valid || ds_ready_go && es_allow_in;
 assign ds_to_es_valid = ds_valid && ds_ready_go;
 
 
-assign br_taken_cancel =  Need_Block ? 1'b0 : br_taken;
+assign br_taken_cancel = !fs_to_ds_valid ? 1'b0 : Need_Block ? 1'b0 : br_taken;
 
 always @(posedge clk)
     begin

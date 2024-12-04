@@ -170,7 +170,7 @@ always @(*)
             AR_START:
                 begin
                     //deal with data_req first
-                    if(rd_data_req && ~need_wait)
+                    if((rd_data_req || rd_data_req_reg) && ~need_wait)
                         ar_next_state = AR_DATA;
                     else if(rd_inst_req)
                         ar_next_state = AR_INST;
@@ -179,7 +179,7 @@ always @(*)
                 end
             AR_INST:
                 begin
-                    if(rvalid && rready)
+                    if(rvalid && rready && rlast)
                         ar_next_state = AR_START;
                     else
                         ar_next_state = AR_INST;
@@ -402,7 +402,7 @@ always @(posedge clk)
     begin
         if(reset)
             arvalid_reg <= 1'b0;
-        else if(ar_cur_state == AR_START && (rd_inst_req || (rd_data_req && ~need_wait)))
+        else if(ar_cur_state == AR_START && r_cur_state == R_START && (rd_inst_req || ((rd_data_req || rd_data_req_reg) && ~need_wait)))
             arvalid_reg <= 1'b1;
         else if(arready)
             arvalid_reg <= 1'b0;
@@ -417,6 +417,8 @@ assign arlock  = 1'b0;
 assign arcache = 4'b0;
 assign arprot  = 3'b0;
 assign arvalid = arvalid_reg;
+
+
 
 /*----------------------------------------------------------------------------------*/
 
@@ -547,8 +549,8 @@ assign bready = bready_reg;
 assign inst_addr_ok = ( (ar_cur_state == AR_START) && rd_inst_req && ~rd_data_req)  //deal with rd_data_req first
                   ||  ( (aw_cur_state == AW_START) && wr_inst_req);
 
-assign data_addr_ok = ( (ar_cur_state == AR_START) && rd_data_req && ~need_wait)
-                  ||  ( (aw_cur_state == AW_START) && wr_data_req);
+assign data_addr_ok = (( (ar_cur_state == AR_START) && rd_data_req && ~need_wait) ||  ( (aw_cur_state == AW_START) && wr_data_req))
+                    ;//&& (r_cur_state != R_INST);
 
 assign inst_data_ok = ( (r_cur_state == R_INST) && rvalid && rready);
 

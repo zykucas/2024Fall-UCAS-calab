@@ -37,7 +37,7 @@ module cache(
     input           wr_rdy          //写请求能否被接收的握手信号
 );
 
-/*-----------------------------------状态机-----------------------------------------*/
+/*-----------------------------------????-----------------------------------------*/
 
 localparam  IDLE            = 5'b00001,
             LOOKUP          = 5'b00010,
@@ -143,7 +143,11 @@ always @(*)
                     //     next_state <= REFILL;
                     // else if(ret_valid && ret_last)
                     //     next_state <= IDLE;
+                    else
+                        next_state <= REFILL;
                 end
+            default:
+                next_state <= IDLE;
         endcase
     end
 
@@ -176,6 +180,8 @@ always @(*)
                     else
                         wb_next_state <= WB_IDLE;
                 end
+            default:
+                wb_next_state <= WB_IDLE;
         endcase
     end
 
@@ -191,6 +197,9 @@ always @(posedge clk)
             reg_tag <= 0;
         else if((curr_state == IDLE && valid && wb_curr_state != WB_WRITE) || (curr_state == LOOKUP && next_state == LOOKUP))
             reg_tag <= tag;
+        else begin
+            reg_tag <= reg_tag;
+        end
     end
 
 //这里为LOOKUP阶段查找时的命中路
@@ -341,7 +350,6 @@ assign cache_rdata = (buff_way == 1'b0) ? {data_bank_rdata[0][3], data_bank_rdat
                                          {data_bank_rdata[1][3], data_bank_rdata[1][2], data_bank_rdata[1][1], data_bank_rdata[1][0]};
 
 //在wb_curr_state即将由WB_IDEL进入WB_WRITE时需将写信息寄存
-
 wire if_write;
 assign if_write = (wb_curr_state == WB_WRITE);
 
@@ -499,6 +507,14 @@ begin
             buff_wstrb  <= wstrb;
             buff_wdata  <= wdata;
         end
+    else begin
+        buff_op <= buff_op;
+        buff_index <= buff_index;
+        buff_tag <= buff_tag;
+        buff_offset <= buff_offset;
+        buff_wstrb  <= buff_wstrb;
+        buff_wdata  <= buff_wdata;
+    end
 end
 
 reg        buff_way;
