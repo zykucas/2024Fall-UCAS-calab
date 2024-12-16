@@ -37,11 +37,18 @@ module mycpu(
     output wire [31:0] debug_wb_rf_wdata,
 
     //icache add
-    output wire [31:0] inst_addr_vrtl
+    output wire [31:0] inst_addr_vrtl,
+    output wire        inst_uncache,
+    
+    //dcache add
+    output wire [31:0] data_addr_vrtl,
+    output wire        data_uncache
+    
 );
 wire         reset;
 assign reset = ~resetn;
-
+assign inst_uncache = 0;
+assign data_uncache = 1;
 wire [`WIDTH_FS_TO_DS_BUS-1:0] fs_to_ds_bus;
 wire ds_allow_in;
 wire fs_to_ds_valid;
@@ -490,6 +497,7 @@ stage3_EX ex(
     .s1_vppn            (s1_vppn),
     .s1_va_bit12        (s1_va_bit12),
     .s1_asid            (s1_asid),
+    .s1_mat             (s1_mat),
 
     .s1_found           (s1_found),
     .s1_index           (s1_index),
@@ -527,7 +535,11 @@ stage3_EX ex(
     .s1_v               (s1_v),
 
     .invtlb_op          (invtlb_op),
-    .invtlb_valid       (invtlb_valid)
+    .invtlb_valid       (invtlb_valid),
+    
+    .data_addr_vrtl     (data_addr_vrtl),
+    .data_uncache       ()
+//    .data_uncache       (data_uncache)
 );
 
 /*----------------------------------------------------------*/

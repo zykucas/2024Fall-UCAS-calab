@@ -34,7 +34,9 @@ module cache(
     output [31:0]   wr_addr,        //写请求起始地址
     output [3:0]    wr_wstrb,       //写操作的字节掩码
     output [127:0]  wr_data,        //写数据
-    input           wr_rdy          //写请求能否被接收的握手信号
+    input           wr_rdy,          //写请求能否被接收的握手信号
+    
+    input           uncache
 );
 
 /*-----------------------------------????-----------------------------------------*/
@@ -84,38 +86,38 @@ always @(*)
                         end
                 end
             LOOKUP:
-                begin
-                    if(cache_hit)
-                        begin
-                            if(~valid)
-                                //若cache命中且没有新请求，则返回IDLE等待
-                                next_state <= IDLE;
-                            else
-                                begin
-                                //若cache命中但有新请求，需分情况讨论
-                                    if(hit_write)
-                                        //有新请求但是hit write冲突，暂时无法接收
-                                        //暂时没有处理Hit Write的第一种情况
-                                        next_state <= IDLE;
-                                    else
-                                        //可以接收新请求
-                                        next_state <= LOOKUP;
-                                end
-                        end
-                    else
-                        begin
-                            if(if_dirty)
-                                //若被替换块是脏块，则需要写回
-                                next_state <= DIRTY_WB;
-                            else
-                                //若被替换块非脏块，则不需要写回
-                                next_state <= REPLACE;
-                        end
-                end
-            DIRTY_WB:
-                begin
-                    if(~wr_rdy)
-                        //总线并没有准备好接受写请求，状态阻塞在DIRTY_WB
+            begin
+                if(cache_hit && !uncache)
+                    begin
+                        if(~valid)
+                            //若cache命中且没有新请求，则返回IDLE等待
+                            next_state <= IDLE;
+                        else
+                            begin
+                            //若cache命中但有新请求，需分情况讨论
+                                if(hit_write)
+                                    //有新请求但是hit write冲突，暂时无法接收
+                                    //暂时没有处理Hit Write的第一种情况
+                                    next_state <= IDLE;
+                                else
+                                    //可以接收新请求
+                                    next_state <= LOOKUP;
+                            end
+                    end
+                else
+                    begin
+                        if(if_dirty || (uncache && buff_op == 1))
+                            //若被替换块是脏块，则需要写回
+                            next_state <= DIRTY_WB;
+                        else
+                            //若被替换块非脏块，则不需要写回
+                            next_state <= REPLACE;
+                    end
+            end
+        DIRTY_WB:
+            begin
+                if(~wr_rdy)
+                    //总线并没有准备好接受写请求，状态阻塞在DIRTY_WB
                         next_state <= DIRTY_WB;
                     else
                         //总线准备好接受写请求，此时将发出wr_req
@@ -126,7 +128,9 @@ always @(*)
                 end
             REPLACE:
                 begin
-                    if(~rd_rdy)
+                    if(buff_op==1)
+                        next_state <= IDLE;
+                    else if(~rd_rdy)
                         //AXI总线没有准备好接收读请求
                         next_state <= REPLACE;
                     else
@@ -234,8 +238,8 @@ assign way0_hit = way0_v && (way0_tag == reg_tag);
 assign way1_hit = way1_v && (way1_tag == reg_tag);
 assign cache_hit = (buff_index_reg == buff_index) && (way0_hit || way1_hit);
 
-assign tagv_we[0] = (curr_state == REFILL) && (buff_way == 0);
-assign tagv_we[1] = (curr_state == REFILL) && (buff_way == 1);
+assign tagv_we[0] = !uncache && ((curr_state == REFILL) && (buff_way == 0));
+assign tagv_we[1] = !uncache && ((curr_state == REFILL) && (buff_way == 1));
 
 assign tagv_addr[0] = buff_index;
 assign tagv_addr[1] = buff_index;
@@ -353,14 +357,14 @@ assign cache_rdata = (buff_way == 1'b0) ? {data_bank_rdata[0][3], data_bank_rdat
 wire if_write;
 assign if_write = (wb_curr_state == WB_WRITE);
 
-assign data_bank_we[0][0] = ({4{if_write && ~buff_way && buff_offset[3:2] == 0}} & buff_wstrb) | {4{ret_valid & ~buff_way & ret_cnt == 2'b00}};
-assign data_bank_we[0][1] = ({4{if_write && ~buff_way && buff_offset[3:2] == 1}} & buff_wstrb) | {4{ret_valid & ~buff_way & ret_cnt == 2'b01}};
-assign data_bank_we[0][2] = ({4{if_write && ~buff_way && buff_offset[3:2] == 2}} & buff_wstrb) | {4{ret_valid & ~buff_way & ret_cnt == 2'b10}};
-assign data_bank_we[0][3] = ({4{if_write && ~buff_way && buff_offset[3:2] == 3}} & buff_wstrb) | {4{ret_valid & ~buff_way & ret_cnt == 2'b11}};
-assign data_bank_we[1][0] = ({4{if_write && buff_way  && buff_offset[3:2] == 0}} & buff_wstrb) | {4{ret_valid & buff_way  & ret_cnt == 2'b00}};
-assign data_bank_we[1][1] = ({4{if_write && buff_way  && buff_offset[3:2] == 1}} & buff_wstrb) | {4{ret_valid & buff_way  & ret_cnt == 2'b01}};
-assign data_bank_we[1][2] = ({4{if_write && buff_way  && buff_offset[3:2] == 2}} & buff_wstrb) | {4{ret_valid & buff_way  & ret_cnt == 2'b10}};
-assign data_bank_we[1][3] = ({4{if_write && buff_way  && buff_offset[3:2] == 3}} & buff_wstrb) | {4{ret_valid & buff_way  & ret_cnt == 2'b11}};
+assign data_bank_we[0][0] = {4{~uncache}} & (({4{if_write && ~buff_way && buff_offset[3:2] == 0}} & buff_wstrb) | {4{ret_valid & ~buff_way & ret_cnt == 2'b00}});
+assign data_bank_we[0][1] = {4{~uncache}} & (({4{if_write && ~buff_way && buff_offset[3:2] == 1}} & buff_wstrb) | {4{ret_valid & ~buff_way & ret_cnt == 2'b01}});
+assign data_bank_we[0][2] = {4{~uncache}} & (({4{if_write && ~buff_way && buff_offset[3:2] == 2}} & buff_wstrb) | {4{ret_valid & ~buff_way & ret_cnt == 2'b10}});
+assign data_bank_we[0][3] = {4{~uncache}} & (({4{if_write && ~buff_way && buff_offset[3:2] == 3}} & buff_wstrb) | {4{ret_valid & ~buff_way & ret_cnt == 2'b11}});
+assign data_bank_we[1][0] = {4{~uncache}} & (({4{if_write && buff_way  && buff_offset[3:2] == 0}} & buff_wstrb) | {4{ret_valid & buff_way  & ret_cnt == 2'b00}});
+assign data_bank_we[1][1] = {4{~uncache}} & (({4{if_write && buff_way  && buff_offset[3:2] == 1}} & buff_wstrb) | {4{ret_valid & buff_way  & ret_cnt == 2'b01}});
+assign data_bank_we[1][2] = {4{~uncache}} & (({4{if_write && buff_way  && buff_offset[3:2] == 2}} & buff_wstrb) | {4{ret_valid & buff_way  & ret_cnt == 2'b10}});
+assign data_bank_we[1][3] = {4{~uncache}} & (({4{if_write && buff_way  && buff_offset[3:2] == 3}} & buff_wstrb) | {4{ret_valid & buff_way  & ret_cnt == 2'b11}});
 
 assign data_bank_addr[0][0] = buff_index;
 assign data_bank_addr[0][1] = buff_index;
@@ -441,7 +445,7 @@ begin
 end
 
 
-assign data_ok = ((curr_state == LOOKUP) && (op == 1 || cache_hit)) || (refill_ok);
+assign data_ok = ((curr_state == LOOKUP) && (cache_hit)) || (refill_ok) || ((curr_state == IDLE) && (buff_op == 1));
 
 //在REPLACE状态下发出读请求
 assign rd_req  = curr_state == REPLACE;
@@ -461,7 +465,8 @@ begin
 end
 assign wr_req  = reg_wr_req;
 
-assign rdata   = way0_hit?
+assign rdata   = buff_uncache ? ret_data:(
+                  way0_hit?
                   ((buff_offset[3:2] == 2'b00) ? data_bank_rdata[0][0] :
                    (buff_offset[3:2] == 2'b01) ? data_bank_rdata[0][1] :
                    (buff_offset[3:2] == 2'b10) ? data_bank_rdata[0][2] :
@@ -470,15 +475,16 @@ assign rdata   = way0_hit?
                   ((buff_offset[3:2] == 2'b00) ? data_bank_rdata[1][0] :
                    (buff_offset[3:2] == 2'b01) ? data_bank_rdata[1][1] :
                    (buff_offset[3:2] == 2'b10) ? data_bank_rdata[1][2] :
-                   data_bank_rdata[1][3]) : 32'b0;
+                   data_bank_rdata[1][3]) : 32'b0);
 
-assign rd_addr = {buff_tag, buff_index, 4'b0};
+assign rd_addr = buff_uncache ?  {buff_tag, buff_index, buff_offset} : {buff_tag, buff_index, 4'b0};
 
-assign wr_addr = (buff_way == 0) ?
+assign wr_addr = buff_uncache ?  {buff_tag, buff_index, buff_offset}:
+                 (buff_way == 0) ?
                  {tagv_rdata[0], tagv_addr[0], 4'b0}:
                  {tagv_rdata[1], tagv_addr[1], 4'b0};
 
-assign wr_data = cache_rdata;
+assign wr_data = buff_uncache? {96'b0,buff_wdata} :cache_rdata;
 
 reg        buff_op;
 reg [7:0]  buff_index;
@@ -486,6 +492,7 @@ reg [19:0] buff_tag;
 reg [3:0]  buff_offset;
 reg [3:0]  buff_wstrb;
 reg [31:0] buff_wdata;
+reg        buff_uncache;
 
 always @(posedge clk)
 begin
@@ -497,6 +504,7 @@ begin
             buff_offset <= 0;
             buff_wstrb  <= 0;
             buff_wdata  <= 0;
+            buff_uncache <= 0;
         end
     else if(next_state == LOOKUP)
         begin
@@ -506,6 +514,7 @@ begin
             buff_offset <= offset;
             buff_wstrb  <= wstrb;
             buff_wdata  <= wdata;
+            buff_uncache<= uncache;
         end
     else begin
         buff_op <= buff_op;
@@ -514,6 +523,7 @@ begin
         buff_offset <= buff_offset;
         buff_wstrb  <= buff_wstrb;
         buff_wdata  <= buff_wdata;
+        buff_uncache<= buff_uncache;
     end
 end
 
@@ -529,9 +539,9 @@ always @(posedge clk)
     end
 
 //测试程序没有用到
-assign rd_type  = 3'b100;
-assign wr_type  = 3'b100;
-assign wr_wstrb = 4'hf;
+assign rd_type  = uncache ? 3'b010 : 3'b100;
+assign wr_type  = uncache ? 3'b010 : 3'b100;
+assign wr_wstrb = uncache ? buff_wstrb : 4'hf;
 
 //for ret cnt, 用于依次读出一个cache行的每个32位数据
 reg [1:0] ret_cnt;
@@ -549,5 +559,8 @@ end
 wire hit_write = (curr_state == LOOKUP && wb_next_state == WB_WRITE) ||
                  (wb_curr_state == WB_WRITE) || 
                  (curr_state == REFILL && buff_op == 1 && ret_last && ret_valid);
+
+//uncache
+
 
 endmodule

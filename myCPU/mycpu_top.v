@@ -150,7 +150,31 @@ wire [31:0] cpu_data_rdata;
     wire [ 3:0] icache_wr_strb;
     wire [127:0]icache_wr_data;
     wire        icache_wr_rdy=1'b0;  
+    
+    wire        icache_uncache;
 
+//dcache read channel
+    wire [31:0] data_addr_vrtl;
+    wire        dcache_addr_ok;
+    wire        dcache_data_ok;
+    wire [31:0] dcache_rdata;
+    wire        dcache_rd_req;
+    wire [ 2:0] dcache_rd_type;
+    wire [31:0] dcache_rd_addr;
+    wire        dcache_rd_rdy;
+    wire        dcache_ret_valid;
+    wire        dcache_ret_last;
+    wire [31:0] dcache_ret_data;
+
+    //dcache write channel       
+    wire        dcache_wr_req;
+    wire [ 2:0] dcache_wr_type;
+    wire [31:0] dcache_wr_addr;
+    wire [ 3:0] dcache_wr_strb;
+    wire [127:0]dcache_wr_data;
+    wire        dcache_wr_rdy;
+    wire        dcache_uncache;
+    
 cpu_bridge_axi u_cpu_bridge_axi(
     .clk        (aclk),
     .resetn     (aresetn),
@@ -164,16 +188,31 @@ cpu_bridge_axi u_cpu_bridge_axi(
     .icache_ret_last(icache_ret_last),
     .icache_ret_data(icache_ret_data),
     
+    //data sram -- dcache
+    .dcache_rd_req  (dcache_rd_req),
+    .dcache_rd_type (dcache_rd_type),
+    .dcache_rd_addr (dcache_rd_addr),
+    .dcache_rd_rdy  (dcache_rd_rdy),
+    .dcache_wr_req  (dcache_wr_req),
+    .dcache_wr_type (dcache_wr_type),
+    .dcache_wr_addr (dcache_wr_addr),
+    .dcache_wr_strb (dcache_wr_strb),
+    .dcache_wr_data (dcache_wr_data),
+    .dcache_wr_rdy  (dcache_wr_rdy),
+    .dcache_ret_valid(dcache_ret_valid),
+    .dcache_ret_last(dcache_ret_last),
+    .dcache_ret_data(dcache_ret_data),
+    
     //data sram
-    .data_req       (cpu_data_req),
-    .data_wr        (cpu_data_wr),
-    .data_size      (cpu_data_size),
-    .data_addr      (cpu_data_addr),
-    .data_wstrb     (cpu_data_wstrb),
-    .data_wdata     (cpu_data_wdata),
-    .data_addr_ok   (cpu_data_addr_ok),
-    .data_data_ok   (cpu_data_data_ok),
-    .data_rdata     (cpu_data_rdata),
+//    .data_req       (),
+//    .data_wr        (),
+//    .data_size      (),
+//    .data_addr      (),
+//    .data_wstrb     (),
+//    .data_wdata     (),
+//    .data_addr_ok   (),
+//    .data_data_ok   (),
+//    .data_rdata     (),
 
     //ar
     .arid           (arid),
@@ -244,9 +283,9 @@ mycpu u_cpu(
     .data_sram_wstrb  (cpu_data_wstrb),
     .data_sram_addr   (cpu_data_addr),
     .data_sram_wdata  (cpu_data_wdata),
-    .data_sram_addr_ok(cpu_data_addr_ok),
-    .data_sram_data_ok(cpu_data_data_ok),
-    .data_sram_rdata  (cpu_data_rdata),
+    .data_sram_addr_ok(dcache_addr_ok),
+    .data_sram_data_ok(dcache_data_ok),
+    .data_sram_rdata  (dcache_rdata),
 
     //debug interface
     .debug_wb_pc      (debug_wb_pc),
@@ -255,7 +294,13 @@ mycpu u_cpu(
     .debug_wb_rf_wdata(debug_wb_rf_wdata),
 
     //icache add
-    .inst_addr_vrtl   (inst_addr_vrtl)
+    .inst_addr_vrtl   (inst_addr_vrtl),
+    .inst_uncache   (icache_uncache),
+    
+    //dcache add
+    .data_addr_vrtl   (data_addr_vrtl),
+    .data_uncache   (dcache_uncache)
+    
 );
 
 cache icache(
@@ -288,7 +333,45 @@ cache icache(
         .wr_addr(icache_wr_addr             ),
         .wr_wstrb(icache_wr_strb             ),
         .wr_data(icache_wr_data             ),
-        .wr_rdy (icache_wr_rdy              )//icache不会真正要写sram，置1没有关系
+        .wr_rdy (icache_wr_rdy              ),//icache不会真正要写sram，置1没有关系
+
+        .uncache(icache_uncache             )
+);
+
+
+cache dcache(
+    //----------cpu interface------
+        .clk    (aclk                       ),
+        .resetn (aresetn                    ),
+        .valid  (cpu_data_req               ),//pre-if request valid
+        .op     (cpu_data_wr                ),//always 0==read
+        .index  (data_addr_vrtl[11:4]       ),
+        .tag    (cpu_data_addr[31:12]       ),//from tlb:inst_sram_addr[31:12]=实地址
+        .offset (data_addr_vrtl[3:0]        ),
+        .wstrb  (cpu_data_wstrb             ),
+        .wdata  (cpu_data_wdata             ),
+        .addr_ok(dcache_addr_ok             ),//output 流水线方向 阻塞流水线的指令
+        .data_ok(dcache_data_ok             ),
+        .rdata  (dcache_rdata               ),//output
+        //--------AXI read interface-------
+        .rd_req (dcache_rd_req              ),//output
+        .rd_type(dcache_rd_type             ),
+        .rd_addr(dcache_rd_addr             ),
+
+        .rd_rdy   (dcache_rd_rdy            ),//input 总线发来的
+        .ret_valid(dcache_ret_valid         ),
+        .ret_last (dcache_ret_last          ),
+        .ret_data (dcache_ret_data          ),
+
+        //--------AXI write interface------
+        .wr_req (dcache_wr_req              ),//output,对于icache永远是0
+        .wr_type(dcache_wr_type             ),
+        .wr_addr(dcache_wr_addr             ),
+        .wr_wstrb(dcache_wr_strb             ),
+        .wr_data(dcache_wr_data             ),
+        .wr_rdy (dcache_wr_rdy              ),
+        
+        .uncache(dcache_uncache             )
 );
 
 endmodule

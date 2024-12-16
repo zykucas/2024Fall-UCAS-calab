@@ -109,6 +109,9 @@ module csr_reg(
     output [2:0] tlbdmw1_vseg,
 
     output [5:0] stat_ecode
+    //uncache
+    
+    
 );
 
 /*

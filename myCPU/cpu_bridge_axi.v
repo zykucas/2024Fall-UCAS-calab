@@ -31,15 +31,15 @@ module cpu_bridge_axi(
     input:  cpu --> bridge
     output: bridge --> cpu
     */
-    input           data_req,
-    input           data_wr,
-    input  [1:0]    data_size,
-    input  [31:0]   data_addr,
-    input  [3:0]    data_wstrb,
-    input  [31:0]   data_wdata,
-    output [31:0]   data_rdata,
-    output          data_addr_ok,
-    output          data_data_ok,
+//    input           data_req,
+//    input           data_wr,
+//    input  [1:0]    data_size,
+//    input  [31:0]   data_addr,
+//    input  [3:0]    data_wstrb,
+//    input  [31:0]   data_wdata,
+//    output [31:0]   data_rdata,
+//    output          data_addr_ok,
+//    output          data_data_ok,
 
     /*
     axi:
@@ -101,7 +101,25 @@ module cpu_bridge_axi(
     output              	icache_rd_rdy,		// icache_addr_ok
     output              	icache_ret_valid,	// icache_data_ok
 	output					icache_ret_last,
-    output  	[31:0]      icache_ret_data
+    output  	[31:0]      icache_ret_data,
+    
+    //dcache rd interface
+    input                   dcache_rd_req,
+    input       [ 2:0]      dcache_rd_type,
+    input       [31:0]      dcache_rd_addr,
+    output                  dcache_rd_rdy,
+    output                  dcache_ret_valid,
+    output                  dcache_ret_last,
+    output      [31:0]      dcache_ret_data,
+    
+    //dcache wr interface
+    
+    input                   dcache_wr_req,
+    input       [ 2:0]      dcache_wr_type,
+    input       [31:0]      dcache_wr_addr,
+    input       [ 3:0]      dcache_wr_strb,
+    output      [127:0]     dcache_wr_data,
+    output                  dcache_wr_rdy
 );
 
 wire           inst_req = icache_rd_req;
@@ -118,6 +136,26 @@ wire           inst_data_ok;
 assign         icache_ret_valid = inst_data_ok;
 assign         icache_ret_last = (r_cur_state == R_INST && r_next_state == R_START && rlast);
 
+wire data_req;
+assign data_req = dcache_rd_req;
+wire data_wr;
+assign data_wr = dcache_wr_req;
+wire [1:0] data_size;
+assign data_size = 2'b10;
+wire [31:0] data_addr;
+assign data_addr = dcache_wr_req ? dcache_wr_addr:dcache_rd_addr;
+wire [3:0]  data_wstrb;
+assign data_wstrb = dcache_wr_strb;
+wire [127:0] data_wdata;
+assign data_wdata = dcache_wr_data;//修改相关通路宽度！！
+wire [31:0] data_rdata;
+assign dcache_ret_data = data_rdata;
+wire data_addr_ok;
+assign dcache_rd_rdy = data_addr_ok;
+wire data_data_ok;
+assign dcache_ret_valid = data_data_ok;
+assign dcache_ret_last = (r_cur_state == R_DATA && r_next_state == R_START && rlast);
+assign dcache_wr_rdy = aw_cur_state == AW_START;
             //读请求状态机
 localparam  AR_START        = 3'b001,
             AR_DATA         = 3'b010,
@@ -186,7 +224,7 @@ always @(*)
                 end
             AR_DATA:
                 begin
-                    if(rvalid && rready)
+                    if(rvalid && rready && rlast)
                         ar_next_state = AR_START;
                     else
                         ar_next_state = AR_DATA;
@@ -316,6 +354,7 @@ assign arid_for_inst = ~arid[0];      //arid == 4'd0 读指
 assign arid_for_data = arid[0];       //arid == 4'd1 读数
 
 reg arid_for_inst_reg;
+reg arid_for_data_reg;
 always @(posedge clk ) begin
     if (reset)
         arid_for_inst_reg <= 1'b0;
@@ -323,6 +362,14 @@ always @(posedge clk ) begin
         arid_for_inst_reg <= 1'b1;
     else if (rlast) 
         arid_for_inst_reg <= 1'b0;
+end
+always @(posedge clk ) begin
+    if (reset)
+        arid_for_data_reg <= 1'b0;
+    else if(arid_for_data)
+        arid_for_data_reg <= 1'b1;
+    else if (rlast) 
+        arid_for_data_reg <= 1'b0;
 end
 
 wire rd_inst_req;
@@ -355,6 +402,7 @@ reg  [3:0]  arid_reg;
 reg  [31:0] araddr_reg;
 reg  [1:0]  arsize_reg;
 reg         arvalid_reg;
+reg  [2:0]  artype_reg;
 
 always @(posedge clk)
     begin
@@ -369,7 +417,18 @@ always @(posedge clk)
             arid_reg <= 4'd0;
         */
     end
-
+    
+always @(posedge clk)
+    begin
+        if(reset)
+            artype_reg <= 3'd0;
+        else if(ar_cur_state == AR_START && rd_data_req)
+            artype_reg <= dcache_rd_type;
+        else if(ar_cur_state == AR_START && rd_inst_req)
+            artype_reg <= icache_rd_type;
+       
+    end
+    
 always @(posedge clk)
     begin
         if(reset)
@@ -407,10 +466,12 @@ always @(posedge clk)
         else if(arready)
             arvalid_reg <= 1'b0;
     end
+wire [2:0]artype;
+assign artype = artype_reg;
 
 assign arid    = arid_reg;
 assign araddr  = araddr_reg;
-assign arlen   = arid ? 8'd0 : 8'd3;
+assign arlen   = artype == 3'b100 ? 8'd3:8'b0;
 assign arsize  = arsize_reg;
 assign arburst = 2'b1;
 assign arlock  = 1'b0;
@@ -477,7 +538,7 @@ always @(posedge clk)
 
 assign awid     = 4'b1;
 assign awaddr   = awaddr_reg;
-assign awlen    = 8'b0;
+assign awlen    = dcache_wr_type==3'b100 ? 8'd3:8'b0;
 assign awsize   = awsize_reg;
 assign awburst  = 2'b01;
 assign awlock   = 1'b0;
@@ -488,18 +549,21 @@ assign awvalid  = awvalid_reg;
 /*----------------------------------------------------------------------------------*/
 
 /*-------------------------------------w_assign-------------------------------------*/
-reg [31:0] wdata_reg;
+reg [127:0] wdata_reg;
+reg [2:0]   wtype_reg;
 reg [3:0]  wstrb_reg;
 reg        wvalid_reg;
 
 always @(posedge clk)
     begin
         if(reset)
-            wdata_reg <= 32'b0;
+            wdata_reg <= 128'b0;
         else if(aw_cur_state == AW_START && wr_data_req)
             wdata_reg <= data_wdata;
+        else if(aw_cur_state == W_DATA && wtype_reg == 3'b100)
+            wdata_reg <= {32'b0,wdata_reg[127:0]};
         else if(bvalid)
-            wdata_reg <= 32'b0;
+            wdata_reg <= 128'b0;
     end
 
 always @(posedge clk)
@@ -510,6 +574,16 @@ always @(posedge clk)
             wstrb_reg <= data_wstrb;
         else if(bvalid)
             wstrb_reg <= 4'b0;
+    end
+    
+always @(posedge clk)
+    begin
+        if(reset)
+            wtype_reg <= 3'b0;
+        else if(aw_cur_state == AW_START && wr_data_req)
+            wtype_reg <= dcache_wr_type;
+        else if(bvalid)
+            wtype_reg <= 3'b0;
     end
 
 always @(posedge clk)
@@ -522,10 +596,20 @@ always @(posedge clk)
             wvalid_reg <= 1'b0;
     end
 
+reg [1:0] cnt_reg;
+always@(posedge clk)begin
+    if(reset || (wtype_reg != 3'b100) || bvalid)
+        cnt_reg <= 2'b0;
+    else if(aw_cur_state == W_DATA && wtype_reg == 3'b100) begin
+        cnt_reg <= cnt_reg + 2'b1;
+    end
+end
+
+
 assign wid      = 4'b1;
-assign wdata    = wdata_reg;
+assign wdata    = wdata_reg[31:0];
 assign wstrb    = wstrb_reg;
-assign wlast    = 1'b1;
+assign wlast    = wtype_reg==3'b100 ? cnt_reg == 2'b11 : wvalid_reg ;
 assign wvalid   = wvalid_reg;
 
 /*----------------------------------------------------------------------------------*/
@@ -554,7 +638,7 @@ assign data_addr_ok = (( (ar_cur_state == AR_START) && rd_data_req && ~need_wait
 
 assign inst_data_ok = ( (r_cur_state == R_INST) && rvalid && rready);
 
-assign data_data_ok = ( (r_cur_state == R_DATA) && rvalid && rready)
+assign data_data_ok = ((r_cur_state == R_DATA) && rvalid && rready)
                   ||  ( (aw_cur_state == W_DATA) && bvalid);
 
 reg [31:0] inst_rdata_reg;
@@ -576,7 +660,7 @@ always @(posedge clk)
     begin
         if(reset)
             data_rdata_reg <= 32'b0;
-        else if(r_cur_state == R_DATA && arid_for_data && rvalid)
+        else if(r_cur_state == R_DATA && (arid_for_data | arid_for_data_reg) && rvalid)
             data_rdata_reg <= rdata;
         /*
         else if(r_cur_state == R_START)

@@ -72,9 +72,15 @@ module stage3_EX(
     input [1:0] s1_plv,
     input s1_d,
     input s1_v,
+    input [1:0] s1_mat,
 
     output invtlb_valid,
-    output [4:0] invtlb_op
+    output [4:0] invtlb_op,
+    
+    //dcache add
+    output [31:0]  data_addr_vrtl,
+    output         data_uncache
+    
 );
 
 /*------------------------------------------------------------*/
@@ -516,7 +522,9 @@ assign if_ppt = if_indt & ~(if_dmw0 | if_dmw1);
 wire [31:0] address_p;
 assign address_p = if_dt ? address_dt : if_indt ?
                 (if_dmw0 ? address_dmw0 : if_dmw1 ? address_dmw1 : address_ptt) : 0;
-
+//uncache
+assign data_uncache = ~(if_dt ? datm[0]:(if_indt ? 
+                (if_dmw0 ? DMW0_MAT[0] : if_dmw1 ? DMW1_MAT[0] : s1_mat[0] ) : 1'b1));
 
 // tlb exception
 
@@ -579,5 +587,9 @@ assign if_es_load = es_res_from_mem;
 //task12 add es_csr_write, es_csr_num
 assign es_to_ds_bus = {es_valid,es_gr_we,es_dest,if_es_load,es_cal_result,
                        es_csr_write, es_csr_num, es_csr};
+
+//dcache add
+assign data_addr_vrtl = es_vaddr;
+
 
 endmodule
