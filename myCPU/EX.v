@@ -510,11 +510,11 @@ assign if_indt = ~crmd_da & crmd_pg;   //da=0, pg=1 --> Ó³ÉäµØÖ··­ÒëÄ£Ê½
 
 wire if_dmw0;
 assign if_dmw0 = ((plv == 0 && DMW0_PLV0) || (plv == 3 && DMW0_PLV3)) &&
-                    (datm == DMW0_MAT) && (es_vaddr[31:29] == DMW0_VSEG);
+                    (es_vaddr[31:29] == DMW0_VSEG);
                     
 wire if_dmw1;
 assign if_dmw1 = ((plv == 0 && DMW1_PLV0) || (plv == 3 && DMW1_PLV3)) &&
-                    (datm == DMW1_MAT) && (es_vaddr[31:29] == DMW1_VSEG);
+                    (es_vaddr[31:29] == DMW1_VSEG);
 
 wire if_ppt;
 assign if_ppt = if_indt & ~(if_dmw0 | if_dmw1);
@@ -578,8 +578,8 @@ assign ld_st_h = es_st_op[2] | es_ld_op[1];
 assign es_ex_ALE = ((ld_st_w & (es_unaligned_addr != 2'b0))
             | (ld_st_h & (es_unaligned_addr[0]))) & es_valid;
 
-assign es_vaddr = (es_mul_op != 0) ? es_mul_result : es_alu_result;
-
+//assign es_vaddr = (es_mul_op != 0) ? es_mul_result : es_alu_result;
+assign es_vaddr = es_alu_result;
 /*-----------------------deliver es_to_ds_bus----------------*/
 
 wire if_es_load;   //if inst is load --> which means forward needs block for one clk

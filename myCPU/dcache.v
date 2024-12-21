@@ -1,4 +1,5 @@
-module cache(
+`default_nettype wire
+module dcache(
     input       clk,
     input       resetn,
     
@@ -36,24 +37,28 @@ module cache(
     output [127:0]  wr_data,        //写数据
     input           wr_rdy,          //写请求能否被接收的握手信号
     
+    output          axi_uncache,
+    
+    input           uncache_test,
     input           uncache
 );
 
 /*-----------------------------------????-----------------------------------------*/
 
-localparam  IDLE            = 5'b00001,
-            LOOKUP          = 5'b00010,
+localparam  IDLE            = 6'b000001,
+            LOOKUP          = 6'b000010,
             //讲义中名字为MISS，但似乎并不准确，实际要做的工作是将脏块写回
-            DIRTY_WB        = 5'b00100,
-            REPLACE         = 5'b01000,
-            REFILL          = 5'b10000,
+            DIRTY_WB        = 6'b000100,
+            REPLACE         = 6'b001000,
+            REFILL          = 6'b010000,
+            WAIT            = 6'b100000,
 
             //Write Buffer状态机
             WB_IDLE         = 2'b01,
             WB_WRITE        = 2'b10;
 
-reg [4:0] curr_state;
-reg [4:0] next_state;
+reg [5:0] curr_state;
+reg [5:0] next_state;
 reg [1:0] wb_curr_state;
 reg [1:0] wb_next_state;
 
@@ -87,7 +92,9 @@ always @(*)
                 end
             LOOKUP:
             begin
-                if(cache_hit && !buff_uncache)
+                if(tagv_addr_reg[0] != tagv_addr[0])
+                    next_state <= LOOKUP;
+                else if(cache_hit && ~buff_uncache)
                     begin
                         if(~valid)
                             //若cache命中且没有新请求，则返回IDLE等待
@@ -106,18 +113,18 @@ always @(*)
                     end
                 else
                     begin
-                        if(if_dirty || (buff_uncache && buff_op == 1))
+                        if((if_dirty && ~buff_uncache) || (buff_uncache && buff_op == 1))
                             //若被替换块是脏块，则需要写回
                             next_state <= DIRTY_WB;
-                        else
+                        else 
                             //若被替换块非脏块，则不需要写回
                             next_state <= REPLACE;
                     end
             end
-        DIRTY_WB:
-            begin
-                if(~wr_rdy)
-                    //总线并没有准备好接受写请求，状态阻塞在DIRTY_WB
+            DIRTY_WB:
+                begin
+                    if(~wr_rdy)
+                        //总线并没有准备好接受写请求，状态阻塞在DIRTY_WB
                         next_state <= DIRTY_WB;
                     else
                         //总线准备好接受写请求，此时将发出wr_req
@@ -128,7 +135,7 @@ always @(*)
                 end
             REPLACE:
                 begin
-                    if(buff_op==1)
+                    if(buff_op==1 && buff_uncache)
                         next_state <= IDLE;
                     else if(~rd_rdy)
                         //AXI总线没有准备好接收读请求
@@ -199,7 +206,7 @@ always @(posedge clk)
     begin
         if(~resetn)
             reg_tag <= 0;
-        else if((curr_state == IDLE && valid && wb_curr_state != WB_WRITE) || (curr_state == LOOKUP && next_state == LOOKUP))
+        else if((curr_state == IDLE && valid && wb_curr_state != WB_WRITE) || (curr_state == LOOKUP && next_state == LOOKUP && tagv_addr[0] == tagv_addr_reg[0]))
             reg_tag <= tag;
         else begin
             reg_tag <= reg_tag;
@@ -236,10 +243,10 @@ always @(posedge clk)
 
 assign way0_hit = way0_v && (way0_tag == reg_tag);
 assign way1_hit = way1_v && (way1_tag == reg_tag);
-assign cache_hit = (buff_index_reg == buff_index) && (way0_hit || way1_hit);
+assign cache_hit = (buff_index_reg == buff_index) && (way0_hit || way1_hit) && ~buff_uncache;
 
-assign tagv_we[0] = !uncache && ((curr_state == REFILL) && (buff_way == 0));
-assign tagv_we[1] = !uncache && ((curr_state == REFILL) && (buff_way == 1));
+assign tagv_we[0] = !buff_uncache && ((curr_state == REFILL) && (buff_way == 0));
+assign tagv_we[1] = !buff_uncache && ((curr_state == REFILL) && (buff_way == 1));
 
 assign tagv_addr[0] = buff_index;
 assign tagv_addr[1] = buff_index;
@@ -252,6 +259,20 @@ wire        tagv_we   [1:0];
 wire [7:0]  tagv_addr [1:0];       //depth = 256 = 2 ^ 8
 wire [20:0] tagv_wdata[1:0];
 wire [20:0] tagv_rdata[1:0];
+reg  [20:0] tagv_addr_reg[1:0];
+
+always @(posedge clk)begin
+    if(~resetn)
+    begin
+        tagv_addr_reg[0] <= 21'b0;
+        tagv_addr_reg[1] <= 21'b0; 
+    end
+    else begin
+        tagv_addr_reg[0] <= tagv_addr[0];
+        tagv_addr_reg[1] <= tagv_addr[1];
+    end
+    
+end
 
 //way0
 TAGV_RAM tagv_way0_ram
@@ -357,14 +378,14 @@ assign cache_rdata = (buff_way == 1'b0) ? {data_bank_rdata[0][3], data_bank_rdat
 wire if_write;
 assign if_write = (wb_curr_state == WB_WRITE);
 
-assign data_bank_we[0][0] =({4{if_write && ~buff_way && buff_offset[3:2] == 0}} & buff_wstrb) | ( {4{~buff_uncache}} & {4{ret_valid & ~buff_way & ret_cnt == 2'b00}});
-assign data_bank_we[0][1] =({4{if_write && ~buff_way && buff_offset[3:2] == 1}} & buff_wstrb) | ( {4{~buff_uncache}} & {4{ret_valid & ~buff_way & ret_cnt == 2'b01}});
-assign data_bank_we[0][2] =({4{if_write && ~buff_way && buff_offset[3:2] == 2}} & buff_wstrb) | ( {4{~buff_uncache}} & {4{ret_valid & ~buff_way & ret_cnt == 2'b10}});
-assign data_bank_we[0][3] =({4{if_write && ~buff_way && buff_offset[3:2] == 3}} & buff_wstrb) | ( {4{~buff_uncache}} & {4{ret_valid & ~buff_way & ret_cnt == 2'b11}});
-assign data_bank_we[1][0] =({4{if_write && buff_way  && buff_offset[3:2] == 0}} & buff_wstrb) | ( {4{~buff_uncache}} & {4{ret_valid & buff_way  & ret_cnt == 2'b00}});
-assign data_bank_we[1][1] =({4{if_write && buff_way  && buff_offset[3:2] == 1}} & buff_wstrb) | ( {4{~buff_uncache}} & {4{ret_valid & buff_way  & ret_cnt == 2'b01}});
-assign data_bank_we[1][2] =({4{if_write && buff_way  && buff_offset[3:2] == 2}} & buff_wstrb) | ( {4{~buff_uncache}} & {4{ret_valid & buff_way  & ret_cnt == 2'b10}});
-assign data_bank_we[1][3] =({4{if_write && buff_way  && buff_offset[3:2] == 3}} & buff_wstrb) | ( {4{~buff_uncache}} & {4{ret_valid & buff_way  & ret_cnt == 2'b11}});
+assign data_bank_we[0][0] = ({4{if_write && ~buff_way && buff_offset[3:2] == 0}} & buff_wstrb) | ({4{~buff_uncache}} & {4{ret_valid & ~buff_way & ret_cnt == 2'b00}});
+assign data_bank_we[0][1] = ({4{if_write && ~buff_way && buff_offset[3:2] == 1}} & buff_wstrb) | ({4{~buff_uncache}} & {4{ret_valid & ~buff_way & ret_cnt == 2'b01}});
+assign data_bank_we[0][2] = ({4{if_write && ~buff_way && buff_offset[3:2] == 2}} & buff_wstrb) | ({4{~buff_uncache}} & {4{ret_valid & ~buff_way & ret_cnt == 2'b10}});
+assign data_bank_we[0][3] = ({4{if_write && ~buff_way && buff_offset[3:2] == 3}} & buff_wstrb) | ({4{~buff_uncache}} & {4{ret_valid & ~buff_way & ret_cnt == 2'b11}});
+assign data_bank_we[1][0] = ({4{if_write && buff_way  && buff_offset[3:2] == 0}} & buff_wstrb) | ({4{~buff_uncache}} & {4{ret_valid & buff_way  & ret_cnt == 2'b00}});
+assign data_bank_we[1][1] = ({4{if_write && buff_way  && buff_offset[3:2] == 1}} & buff_wstrb) | ({4{~buff_uncache}} & {4{ret_valid & buff_way  & ret_cnt == 2'b01}});
+assign data_bank_we[1][2] = ({4{if_write && buff_way  && buff_offset[3:2] == 2}} & buff_wstrb) | ({4{~buff_uncache}} & {4{ret_valid & buff_way  & ret_cnt == 2'b10}});
+assign data_bank_we[1][3] = ({4{if_write && buff_way  && buff_offset[3:2] == 3}} & buff_wstrb) | ({4{~buff_uncache}} & {4{ret_valid & buff_way  & ret_cnt == 2'b11}});
 
 assign data_bank_addr[0][0] = buff_index;
 assign data_bank_addr[0][1] = buff_index;
@@ -426,7 +447,7 @@ endgenerate
 2：由LOOKUP继续接收请求扔留在LOOKUP
 这两种情况的next_state均为LOOKUP
 */
-assign addr_ok = (next_state == LOOKUP);
+assign addr_ok = (next_state == LOOKUP & tagv_addr[0] == tagv_addr_reg[0]);
 
 /*准备好读的数据或写成功时向CPU拉高data_ok，分三种情况
 1：在LOOKUP状态下是写操作，此时无论命中与否都可以返回data_ok
@@ -443,16 +464,7 @@ begin
     else
         refill_ok <= 1'b0;
 end
-reg [1:0] lookup_reg;
-always @(posedge clk)
-begin
-    if(~resetn)
-        lookup_reg <= 2'b0;
-    else if(curr_state == LOOKUP)
-        lookup_reg <= lookup_reg + 1;
-    else if(next_state == LOOKUP)
-        lookup_reg <= 2'b0;
-end
+
 
 assign data_ok = ((curr_state == LOOKUP) && (cache_hit)) || (refill_ok) || ((curr_state == IDLE) && (buff_op == 1));
 
@@ -502,6 +514,7 @@ reg [3:0]  buff_offset;
 reg [3:0]  buff_wstrb;
 reg [31:0] buff_wdata;
 reg        buff_uncache;
+reg        buff_to_uncache;//cached state change to uncache state
 
 always @(posedge clk)
 begin
@@ -513,9 +526,9 @@ begin
             buff_offset <= 0;
             buff_wstrb  <= 0;
             buff_wdata  <= 0;
-            buff_uncache <= 1;
+            buff_uncache <= 0;
         end
-    else if(next_state == LOOKUP)
+    else if(next_state == LOOKUP && (tagv_addr[0] == tagv_addr_reg[0]))
         begin
             buff_op <= op;
             buff_index <= index;
@@ -535,6 +548,23 @@ begin
         buff_uncache<= buff_uncache;
     end
 end
+assign axi_uncache = buff_uncache;
+reg     buff_uncache_test;
+
+always @(posedge clk)begin
+    if(~resetn)
+        buff_to_uncache <= 0;
+    else if(curr_state == IDLE && valid && buff_uncache_test == 0 && uncache_test == 1)
+        buff_to_uncache <= 1;
+    else if(curr_state == IDLE && valid)
+        buff_to_uncache <= 0;
+end
+always @(posedge clk)begin
+    if(~resetn)
+        buff_uncache_test <= 1;
+    else if(curr_state == IDLE && valid)
+        buff_uncache_test <= uncache_test;
+end
 
 reg        buff_way;
 always @(posedge clk)
@@ -547,10 +577,11 @@ always @(posedge clk)
             buff_way <= replace_way;
     end
 
+
 //测试程序没有用到
 assign rd_type  = uncache ? 3'b010 : 3'b100;
-assign wr_type  = uncache ? 3'b010 : 3'b100;
-assign wr_wstrb = uncache ? buff_wstrb : 4'hf;
+assign wr_type  = buff_uncache ? 3'b010 : 3'b100;
+assign wr_wstrb = buff_uncache ? buff_wstrb : 4'hf;
 
 //for ret cnt, 用于依次读出一个cache行的每个32位数据
 reg [1:0] ret_cnt;

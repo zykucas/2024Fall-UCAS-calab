@@ -103,6 +103,8 @@ module cpu_bridge_axi(
 	output					icache_ret_last,
     output  	[31:0]      icache_ret_data,
     
+    output                  dcache_uncache,
+    
     //dcache rd interface
     input                   dcache_rd_req,
     input       [ 2:0]      dcache_rd_type,
@@ -266,7 +268,7 @@ always @(*)
                 end
             R_DATA:
                 begin
-                    if(rvalid && rready)
+                    if(rvalid && rready && rlast)
                         r_next_state = R_START;
                     else
                         r_next_state = R_DATA;
@@ -381,9 +383,9 @@ reg rd_data_req_reg;
 always @(posedge clk ) begin
     if(reset)
         rd_data_req_reg <= 1'b0;
-    else if(r_cur_state != R_START && rd_data_req)
+    else if(ar_cur_state != AR_START && rd_data_req)
         rd_data_req_reg <= 1'b1;
-    else if(r_cur_state != R_START && !rd_data_req)
+    else if(ar_cur_state != AR_START && !rd_data_req)
         rd_data_req_reg <= rd_data_req_reg;
     else
         rd_data_req_reg <= 1'b0;
@@ -392,7 +394,7 @@ end
 //wr --> 0??? ; 1???
 assign rd_inst_req = inst_req && ~inst_wr;      
 assign wr_inst_req = inst_req && inst_wr;
-assign rd_data_req = data_req && ~data_wr;
+assign rd_data_req = dcache_uncache ? (data_req && ~data_wr):data_req;
 assign wr_data_req = data_req && data_wr;
 
 /*----------------------------------------------------------------------------------*/
@@ -590,7 +592,7 @@ always @(posedge clk)
     begin
         if(reset)
             wvalid_reg <= 1'b0;
-        else if(aw_cur_state == AW_DATA && (awvalid && awready))
+        else if(aw_cur_state == W_DATA)
             wvalid_reg <= 1'b1;
         else if(wready)
             wvalid_reg <= 1'b0;
@@ -600,7 +602,7 @@ reg [1:0] cnt_reg;
 always@(posedge clk)begin
     if(reset || (wtype_reg != 3'b100) || bvalid)
         cnt_reg <= 2'b0;
-    else if(aw_cur_state == W_DATA && wtype_reg == 3'b100) begin
+    else if(aw_cur_state == W_DATA && wtype_reg == 3'b100 && wready == 1) begin
         cnt_reg <= cnt_reg + 2'b1;
     end
 end

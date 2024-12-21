@@ -174,6 +174,7 @@ wire [31:0] cpu_data_rdata;
     wire [127:0]dcache_wr_data;
     wire        dcache_wr_rdy;
     wire        dcache_uncache;
+    wire        axi_uncache;
     
 cpu_bridge_axi u_cpu_bridge_axi(
     .clk        (aclk),
@@ -199,6 +200,8 @@ cpu_bridge_axi u_cpu_bridge_axi(
     .dcache_wr_strb (dcache_wr_strb),
     .dcache_wr_data (dcache_wr_data),
     .dcache_wr_rdy  (dcache_wr_rdy),
+    .dcache_uncache  (axi_uncache),
+    
     .dcache_ret_valid(dcache_ret_valid),
     .dcache_ret_last(dcache_ret_last),
     .dcache_ret_data(dcache_ret_data),
@@ -339,7 +342,7 @@ cache icache(
 );
 
 
-cache dcache(
+dcache dcache(
     //----------cpu interface------
         .clk    (aclk                       ),
         .resetn (aresetn                    ),
@@ -370,6 +373,7 @@ cache dcache(
         .wr_wstrb(dcache_wr_strb             ),
         .wr_data(dcache_wr_data             ),
         .wr_rdy (dcache_wr_rdy              ),
+        .axi_uncache(axi_uncache),
         
         .uncache(dcache_uncache             )
 );
