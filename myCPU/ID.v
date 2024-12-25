@@ -27,7 +27,9 @@ module stage2_ID(
 
     //tlb new add
     output tlb_zombie,
-    input tlb_reflush
+    input tlb_reflush,
+
+    output ds_inst_cacop
 );
 
 wire [31:0] inst;
@@ -139,6 +141,11 @@ wire        inst_tlbfill;
 wire        inst_invtlb;
 wire [4:0]  inst_invtlb_op;
 
+//cacop inst
+wire        inst_cacop;
+
+wire [4:0]  cacop_code = inst[4:0];
+
 wire        ds_ex_INE;
 assign ds_ex_INE   =     (~(inst_add_w | inst_sub_w | inst_slt | inst_sltu | inst_nor | inst_and |
                          inst_or | inst_xor | inst_slli_w | inst_srli_w | inst_srai_w |
@@ -151,7 +158,7 @@ assign ds_ex_INE   =     (~(inst_add_w | inst_sub_w | inst_slt | inst_sltu | ins
                          inst_st_h | inst_blt | inst_bge | inst_bltu | inst_bgeu |
                          inst_csrrd | inst_csrwr | inst_csrxchg | inst_ertn | inst_syscall |
                          inst_rdcntvl_w | inst_rdcntvh_w | inst_rdcntid | inst_break |
-                         inst_tlbsrch | inst_tlbrd | inst_tlbwr | inst_tlbfill | inst_invtlb) || (inst_invtlb && 
+                         inst_tlbsrch | inst_tlbrd | inst_tlbwr | inst_tlbfill | inst_invtlb || inst_cacop) || (inst_invtlb && 
                          ~(inst_invtlb_op == 5'h6 || inst_invtlb_op == 5'h5 || inst_invtlb_op == 5'h4 || inst_invtlb_op[4:2] == 3'h0))) 
                          && (ds_pc != 32'b0) && (~ds_ex_ADEF);
 
@@ -430,10 +437,13 @@ assign inst_invtlb =  op_31_26_d[6'h1] & op_25_22_d[4'h9] &
 
 assign inst_invtlb_op = inst[4:0];
 
+//exp23
+assign inst_cacop = op_31_26_d[6'h1] & op_25_22_d[4'h8];
+
 
 assign need_ui5   =  inst_slli_w | inst_srli_w | inst_srai_w;  
 assign need_si12  =  inst_addi_w | inst_ld_w | inst_st_w | inst_slti | inst_sltiu | inst_st_b | inst_st_h
-                | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu;   
+                | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu | inst_cacop;   
 assign need_si16  =  inst_jirl | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu;       
 assign need_si20  =  inst_lu12i_w | inst_pcaddu12i;          
 assign need_si26  =  inst_b | inst_bl;    
@@ -545,7 +555,8 @@ assign br_stall = (inst_beq || inst_bne || inst_bl || inst_b || inst_blt
 assign br_target = (inst_beq || inst_bne || inst_bl || inst_b || inst_blt 
                              || inst_bge || inst_bltu || inst_bgeu) ? (ds_pc + br_offs) :   
                                                    /*inst_jirl*/ (rj_value + jirl_offs); 
-assign br_bus = {br_taken_cancel, br_stall, br_taken, br_target};           
+assign br_bus = {br_taken_cancel, br_stall, br_taken, br_target};
+
 
 //forward deliver
 wire [31:0] forward_rdata1;
@@ -564,13 +575,13 @@ assign dest = inst_rdcntid ? rj : dst_is_r1 ? 5'd1 : rd;
 assign gr_we         = ~inst_st_w & ~inst_st_b & ~inst_st_h &~inst_beq & ~inst_bne & ~inst_b & 
                        ~inst_blt & ~inst_bltu & ~inst_bge & ~inst_bgeu & ~inst_ertn & ~inst_break & ~ds_ex_INE & ~ds_ex_ADEF &
                        ~ds_ex_syscall & ~inst_tlbsrch & ~inst_tlbrd & ~inst_tlbwr & ~inst_tlbfill & ~inst_invtlb &
-                       ~ds_ex_fetch_plv_invalid & ~ds_ex_fetch_tlb_refill & ~ds_ex_inst_invalid;   
+                       ~ds_ex_fetch_plv_invalid & ~ds_ex_fetch_tlb_refill & ~ds_ex_inst_invalid && ~inst_cacop;   
 assign mem_we        = inst_st_w | inst_st_b | inst_st_h;
 
 assign alu_op[ 0] = inst_add_w | inst_addi_w | inst_ld_w | inst_st_w
                     | inst_jirl | inst_bl | inst_pcaddu12i
                     | inst_st_b | inst_st_h
-                    | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu;
+                    | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu | inst_cacop;
 assign alu_op[ 1] = inst_sub_w;
 assign alu_op[ 2] = inst_slt | inst_slti;
 assign alu_op[ 3] = inst_sltu | inst_sltiu;
@@ -610,7 +621,7 @@ assign src2_is_imm   = inst_slli_w |    //checked
                        inst_xori   |
                        inst_st_b   |
                        inst_st_h   |
-                       inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu;    
+                       inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu | inst_cacop;    
 
 assign res_from_mem  = inst_ld_w | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu;
 
@@ -677,6 +688,10 @@ assign ds_to_es_bus[244:244] = ds_ex_fetch_tlb_refill;
 assign ds_to_es_bus[245:245] = ds_ex_inst_invalid;
 assign ds_to_es_bus[246:246] = ds_ex_fetch_plv_invalid;
 
+//exp23 add
+assign ds_to_es_bus[247:247] = inst_cacop;
+assign ds_to_es_bus[252:248] = cacop_code;
+
 /*----------------------------------------------------------------*/
 
 /*------------------------------read address signal--------------------------*/
@@ -731,7 +746,7 @@ assign forward_rdata2 = ex_crush2? es_wdata : mem_crush2? ms_wdata : wb_crush2? 
 /*------------------------------handshake signal--------------------------*/
 wire ds_ready_go;
 assign ds_ready_go = ~Need_Block;         
-assign ds_allow_in = !ds_valid || ds_ready_go && es_allow_in;
+assign ds_allow_in = (!ds_valid || ds_ready_go && es_allow_in);
 assign ds_to_es_valid = ds_valid && ds_ready_go;
 
 

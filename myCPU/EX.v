@@ -48,17 +48,17 @@ module stage3_EX(
     input        tlb_reflush,
 
     //for translate
-    input crmd_da,      //当前翻译模式
+    input crmd_da,      //锟斤拷前锟斤拷锟斤拷模式
     input crmd_pg,
 
-    input [1:0] plv,    //当前特权等级, 0-3, 0为最高
-    input [1:0] datm,    //直接地址翻译模式下，load/store操作的存储访问类型
+    input [1:0] plv,    //锟斤拷前锟斤拷权锟饺硷拷, 0-3, 0为锟斤拷锟?
+    input [1:0] datm,    //直锟接碉拷址锟斤拷锟斤拷模式锟铰ｏ拷load/store锟斤拷锟斤拷锟侥存储锟斤拷锟斤拷锟斤拷锟斤拷
 
-    input DMW0_PLV0,        //为1表示在PLV0下可以使用该窗口进行直接映射地址翻译
-    input DMW0_PLV3,        //为1表示在PLV3下可以使用该窗口进行直接映射地址翻译
-    input [1:0] DMW0_MAT,   //虚地址落在该映射窗口下访存操作的存储类型访问
-    input [2:0] DMW0_PSEG,  //直接映射窗口物理地址高3位
-    input [2:0] DMW0_VSEG,  //直接映射窗口虚地址高3位
+    input DMW0_PLV0,        //为1锟斤拷示锟斤拷PLV0锟铰匡拷锟斤拷使锟矫该达拷锟节斤拷锟斤拷直锟斤拷映锟斤拷锟街凤拷锟斤拷锟?
+    input DMW0_PLV3,        //为1锟斤拷示锟斤拷PLV3锟铰匡拷锟斤拷使锟矫该达拷锟节斤拷锟斤拷直锟斤拷映锟斤拷锟街凤拷锟斤拷锟?
+    input [1:0] DMW0_MAT,   //锟斤拷锟街凤拷锟斤拷诟锟接筹拷浯帮拷锟斤拷路么锟斤拷锟斤拷锟侥存储锟斤拷锟酵凤拷锟斤拷
+    input [2:0] DMW0_PSEG,  //直锟斤拷映锟戒窗锟斤拷锟斤拷锟斤拷锟斤拷址锟斤拷3位
+    input [2:0] DMW0_VSEG,  //直锟斤拷映锟戒窗锟斤拷锟斤拷锟街凤拷锟?3位
 
 
     input DMW1_PLV0,        
@@ -79,17 +79,24 @@ module stage3_EX(
     
     //dcache add
     output [31:0]  data_addr_vrtl,
-    output         data_uncache
-    
+    output         data_uncache,
+
+    //exp23 cacop add
+    output [4:0] es_cacop_code,
+    output cacop_icache,
+    output cacop_dcache,
+    output [31:0] cacop_addr,
+    input  cacop_over_dcache,
+    input  cacop_over_icache
 );
 
 /*------------------------------------------------------------*/
 /*
-1: es_ex_loadstore_tlb_refill   TLB重填例外
-2: es_ex_load_invalid           load操作页无效例外
-3: es_ex_store_invalid          store操作页无效例外
-4: es_ex_loadstore_plv_invalid  页特权等级不合规例外
-5：es_ex_store_dirty               页修改例外 
+1: es_ex_loadstore_tlb_refill   TLB锟斤拷锟斤拷锟斤拷锟斤拷
+2: es_ex_load_invalid           load锟斤拷锟斤拷页锟斤拷效锟斤拷锟斤拷
+3: es_ex_store_invalid          store锟斤拷锟斤拷页锟斤拷效锟斤拷锟斤拷
+4: es_ex_loadstore_plv_invalid  页锟斤拷权锟饺硷拷锟斤拷锟较癸拷锟斤拷锟斤拷
+5锟斤拷es_ex_store_dirty               页锟睫革拷锟斤拷锟斤拷 
 */
 
 wire es_ex_loadstore_tlb_fill;
@@ -170,6 +177,15 @@ wire        es_ex_fetch_tlb_refill;
 wire        es_ex_inst_invalid;
 wire        es_ex_fetch_plv_invalid;
 
+//exp23 cacop add
+wire es_inst_cacop;
+wire [4:0] es_cacop_code;
+
+assign cacop_icache = es_inst_cacop && (es_cacop_code[2:0] == 3'b0) && (es_cacop_code[4:3] != 2'b11);
+assign cacop_dcache = es_inst_cacop && (es_cacop_code[2:0] == 3'b1) && (es_cacop_code[4:3] != 2'b11);
+assign cacop_addr = (es_cacop_code[4] == 0) ? data_addr_vrtl :
+                         (es_cacop_code[4:3] == 2'b10) ? address_p : 0;
+
 
 wire dividend_ready,dividend_u_ready;
 wire dividend_valid,dividend_u_valid;
@@ -184,7 +200,7 @@ always @(posedge clk)
     begin
         if(reset)
             ds_to_es_bus_reg <= 0;
-        else if(ertn_flush || wb_ex )
+        else if(ertn_flush || wb_ex || cacop_over_dcache || cacop_over_icache)
             ds_to_es_bus_reg <= 0;
         else if(ds_to_es_valid && es_allow_in)
             ds_to_es_bus_reg <= ds_to_es_bus;
@@ -299,7 +315,7 @@ assign ds_to_es_bus[245:245] = ds_ex_inst_invalid;
 assign ds_to_es_bus[246:246] = ds_ex_fetch_plv_invalid;
 
 */
-assign {es_ex_fetch_plv_invalid, es_ex_inst_invalid, es_ex_fetch_tlb_refill, es_tlb_zombie,
+assign {es_cacop_code,es_inst_cacop,es_ex_fetch_plv_invalid, es_ex_inst_invalid, es_ex_fetch_tlb_refill, es_tlb_zombie,
         es_inst_invtlb_op, es_inst_invtlb, es_inst_tlbfill, es_inst_tlbwr, es_inst_tlbrd, es_inst_tlbsrch,
         es_has_int, es_rdcntvl_w, es_rdcntvh_w, es_ex_break, es_ex_INE, es_ex_ADEF,
         es_code, es_ex_syscall, es_csr, es_ertn_flush, es_csr_write, es_csr_wmask, es_csr_num,
@@ -442,8 +458,8 @@ assign if_es_has_int = es_ex_syscall || es_ertn_flush || es_ex_ADEF || es_ex_ALE
                 || es_ex_fetch_tlb_refill || es_ex_inst_invalid || es_ex_fetch_plv_invalid
                 || es_ex_loadstore_tlb_fill || es_ex_load_invalid || es_ex_store_invalid
                 || es_ex_loadstore_plv_invalid || es_ex_store_dirty ;
-// 当MS级的allowin1时再发出req，是为了保证req与addr_ok握手时allowin也是拉高
-// 当es流水级或ms,ws有异常时阻止访存，为了维护精确异常
+// 锟斤拷MS锟斤拷锟斤拷allowin1时锟劫凤拷锟斤拷req锟斤拷锟斤拷为锟剿憋拷证req锟斤拷addr_ok锟斤拷锟斤拷时allowin也锟斤拷锟斤拷锟斤拷
+// 锟斤拷es锟斤拷水锟斤拷锟斤拷ms,ws锟斤拷锟届常时锟斤拷止锟矫存，为锟斤拷维锟斤拷锟斤拷确锟届常
 assign data_sram_req = (ms_allow_in && no_exception) && (es_res_from_mem || es_mem_we) && es_valid;
 
 reg es_valid;
@@ -457,10 +473,11 @@ always @(posedge clk)
 
 wire es_ready_go;
 
-assign es_ready_go = block_with_tlbsrch ? 1'b0 :
+assign es_ready_go = es_inst_cacop ? (cacop_over_dcache | cacop_over_icache) :
+                     block_with_tlbsrch ? 1'b0 :
                      if_es_has_int ? 1'b1 : 
                      (es_mem_we || es_res_from_mem) ? (data_sram_req && data_sram_addr_ok) : 
-                     (!es_div_op[0] | (current_state==OUT_WAIT & out_valid | current_state==UOUT_WAIT & out_u_valid)) ;//不确定是否有逻辑问题
+                     (!es_div_op[0] | (current_state==OUT_WAIT & out_valid | current_state==UOUT_WAIT & out_u_valid)) ;//锟斤拷确锟斤拷锟角凤拷锟斤拷锟竭硷拷锟斤拷锟斤拷
 
 assign es_allow_in = (!es_valid || es_ready_go && ms_allow_in &&
                       (current_state == EXE | current_state==OUT_WAIT & out_valid | current_state==UOUT_WAIT & out_u_valid));
@@ -503,10 +520,10 @@ wire [31:0] address_ptt;
 assign address_ptt = {s1_ppn, es_vaddr[11:0]};
 
 wire if_dt;
-assign if_dt = crmd_da & ~crmd_pg;   //da=1, pg=0 --> 直接地址翻译模式
+assign if_dt = crmd_da & ~crmd_pg;   //da=1, pg=0 --> 直锟接碉拷址锟斤拷锟斤拷模式
 
 wire if_indt;
-assign if_indt = ~crmd_da & crmd_pg;   //da=0, pg=1 --> 映射地址翻译模式
+assign if_indt = ~crmd_da & crmd_pg;   //da=0, pg=1 --> 映锟斤拷锟街凤拷锟斤拷锟侥Ｊ?
 
 wire if_dmw0;
 assign if_dmw0 = ((plv == 0 && DMW0_PLV0) || (plv == 3 && DMW0_PLV3)) &&
@@ -528,8 +545,8 @@ assign data_uncache = ~(if_dt ? datm[0]:(if_indt ?
 
 // tlb exception
 
-assign es_ex_loadstore_tlb_fill = if_ppt & (es_res_from_mem | es_mem_we) & ~s1_found;
-assign es_ex_load_invalid = if_ppt & es_res_from_mem & s1_found & ~s1_v;
+assign es_ex_loadstore_tlb_fill = (if_ppt & (es_res_from_mem | es_mem_we | es_inst_cacop) & ~s1_found);
+assign es_ex_load_invalid = if_ppt & (es_res_from_mem | es_inst_cacop) & s1_found & ~s1_v;
 assign es_ex_store_invalid = if_ppt & es_mem_we & s1_found & ~s1_v;
 assign es_ex_loadstore_plv_invalid = if_ppt & (es_res_from_mem | es_mem_we) & s1_found
                                     & s1_v & (plv > s1_plv);

@@ -48,51 +48,51 @@ module cpu_bridge_axi(
     output: bridge --> axi
     */
 
-    //ar    ¶ÁÇëÇóÍ¨µÀ
-    output [3:0]    arid,           //¶ÁÇëÇóID                           È¡Ö¸0£¬È¡1     
-    output [31:0]   araddr,         //¶ÁÇëÇóµÄµØÖ·    
+    //ar    ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¨ï¿½ï¿½
+    output [3:0]    arid,           //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ID                           È¡Ö¸0ï¿½ï¿½È¡1     
+    output [31:0]   araddr,         //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Äµï¿½Ö·    
     output [7:0]    arlen,          //fixed --> 8'b0
-    output [2:0]    arsize,         //ÇëÇó´«Êä´óÐ¡(Êý¾Ý´«ÊäÃ¿ÅÄµÄ×Ö½ÚÊý)     
+    output [2:0]    arsize,         //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¡(ï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½Ã¿ï¿½Äµï¿½ï¿½Ö½ï¿½ï¿½ï¿½)     
     output [1:0]    arburst,        //fixed --> 2'b1
     output [1:0]    arlock,         //fixed --> 2'b0
     output [3:0]    arcache,        //fixed --> 4'b0
     output [2:0]    arprot,         //fixed --> 3'b0
-    output          arvalid,        //¶ÁÇëÇóµØÖ·ÎÕÊÖ(¶ÁÇëÇóµØÖ·ÓÐÐ§)
-    input           arready,        //¶ÁÇëÇóµØÖ·ÎÕÊÖ(slave¶Ë×¼±¸ºÃ½ÓÊÕµØÖ·)
+    output          arvalid,        //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½Ð§)
+    input           arready,        //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½(slaveï¿½ï¿½×¼ï¿½ï¿½ï¿½Ã½ï¿½ï¿½Õµï¿½Ö·)
 
-    //r  ¶ÁÏìÓ¦Í¨µÀ
-    input  [3:0]    rid,            //¶ÁÇëÇóµÄIDºÅ£¬Í¬Ò»ÇëÇóµÄrid=arid
-    input  [31:0]   rdata,          //¶ÁÇëÇóµÄ¶Á»ØÊý¾Ý
+    //r  ï¿½ï¿½ï¿½ï¿½Ó¦Í¨ï¿½ï¿½
+    input  [3:0]    rid,            //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½IDï¿½Å£ï¿½Í¬Ò»ï¿½ï¿½ï¿½ï¿½ï¿½rid=arid
+    input  [31:0]   rdata,          //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     input  [1:0]    rresp,          //ignore
     input           rlast,          //ignore
-    input           rvalid,         //¶ÁÇëÇóÊý¾ÝÎÕÊÖ(¶ÁÇëÇóÊý¾ÝÓÐÐ§)
-    output          rready,         //¶ÁÇëÇóÊý¾ÝÎÕÊÖ(master¶Ë×¼±¸ºÃ½ÓÊÕÊý¾Ý)
+    input           rvalid,         //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð§)
+    output          rready,         //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(masterï¿½ï¿½×¼ï¿½ï¿½ï¿½Ã½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
 
-    //aw  Ð´ÇëÇóÍ¨µÀ
+    //aw  Ð´ï¿½ï¿½ï¿½ï¿½Í¨ï¿½ï¿½
     output [3:0]    awid,           //fixed, 4'b1
-    output [31:0]   awaddr,         //Ð´ÇëÇóµÄµØÖ·
+    output [31:0]   awaddr,         //Ð´ï¿½ï¿½ï¿½ï¿½Äµï¿½Ö·
     output [7:0]    awlen,          //fixed, 8'b0
-    output [2:0]    awsize,         //ÇëÇó´«ÊäµÄ´óÐ¡(Êý¾Ý´«ÊäÃ¿ÅÄµÄ×Ö½ÚÊý)
+    output [2:0]    awsize,         //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä´ï¿½Ð¡(ï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½Ã¿ï¿½Äµï¿½ï¿½Ö½ï¿½ï¿½ï¿½)
     output [1:0]    awburst,        //fixed, 2'b1
     output [1:0]    awlock,         //fixed, 2'b0
     output [1:0]    awcache,        //fixed, 4'b0
     output [2:0]    awprot,         //fixed, 3'b0
-    output          awvalid,        //Ð´ÇëÇóµØÖ·ÎÕÊÖ(Ð´ÇëÇóµØÖ·ÓÐÐ§)
-    input           awready,        //Ð´ÇëÇóµØÖ·ÎÕÊÖ(slave¶Ë×¼±¸ºÃ½ÓÊÕµØÖ·)
+    output          awvalid,        //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½(Ð´ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½Ð§)
+    input           awready,        //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½(slaveï¿½ï¿½×¼ï¿½ï¿½ï¿½Ã½ï¿½ï¿½Õµï¿½Ö·)
 
-    //w  Ð´Êý¾ÝÍ¨µÀ
+    //w  Ð´ï¿½ï¿½ï¿½ï¿½Í¨ï¿½ï¿½
     output [3:0]    wid,            //fixed, 4'b1
-    output [31:0]   wdata,          //Ð´ÇëÇóµÄÐ´Êý¾Ý
-    output [3:0]    wstrb,          //×Ö½ÚÑ¡ÔñÎ»
+    output [31:0]   wdata,          //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½ï¿½ï¿½
+    output [3:0]    wstrb,          //ï¿½Ö½ï¿½Ñ¡ï¿½ï¿½Î»
     output          wlast,          //fixed, 1'b1
-    output          wvalid,         //Ð´ÇëÇóÊý¾ÝÎÕÊÖ(Ð´ÇëÇóÊý¾ÝÓÐÐ§)
-    input           wready,         //Ð´ÇëÇóÊý¾ÝÎÕÊÖ(slave¶Ë×¼±¸ºÃ½ÓÊÕÊý¾Ý)
+    output          wvalid,         //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð§)
+    input           wready,         //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(slaveï¿½ï¿½×¼ï¿½ï¿½ï¿½Ã½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
 
-    //b  Ð´ÏìÓ¦Í¨µÀ
+    //b  Ð´ï¿½ï¿½Ó¦Í¨ï¿½ï¿½
     input  [3:0]    bid,            //ignore
     input  [1:0]    bresp,          //ignore
-    input           bvalid,         //Ð´ÇëÇóÏìÓ¦ÎÕÊÖ(Ð´ÇëÇóÏìÓ¦ÓÐÐ§)
-    output          bready,          //Ð´ÇëÇóÏìÓ¦ÎÕÊÖ(master¶Ë×¼±¸ºÃ½ÓÊÕÐ´ÏìÓ¦)
+    input           bvalid,         //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½(Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½Ð§)
+    output          bready,          //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½(masterï¿½ï¿½×¼ï¿½ï¿½ï¿½Ã½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½Ó¦)
 
     // icache rd interface
     input               	icache_rd_req,
@@ -145,11 +145,11 @@ assign data_wr = dcache_wr_req;
 wire [1:0] data_size;
 assign data_size = 2'b10;
 wire [31:0] data_addr;
-assign data_addr = dcache_wr_req ? dcache_wr_addr:dcache_rd_addr;
+assign data_addr = dcache_wr_req ? dcache_wr_addr : dcache_rd_addr;
 wire [3:0]  data_wstrb;
 assign data_wstrb = dcache_wr_strb;
 wire [127:0] data_wdata;
-assign data_wdata = dcache_wr_data;//ÐÞ¸ÄÏà¹ØÍ¨Â·¿í¶È£¡£¡
+assign data_wdata = dcache_wr_data;//ï¿½Þ¸ï¿½ï¿½ï¿½ï¿½Í¨Â·ï¿½ï¿½ï¿½È£ï¿½ï¿½ï¿½
 wire [31:0] data_rdata;
 assign dcache_ret_data = data_rdata;
 wire data_addr_ok;
@@ -158,22 +158,22 @@ wire data_data_ok;
 assign dcache_ret_valid = data_data_ok;
 assign dcache_ret_last = (r_cur_state == R_DATA && r_next_state == R_START && rlast);
 assign dcache_wr_rdy = aw_cur_state == AW_START;
-            //¶ÁÇëÇó×´Ì¬»ú
+            //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½
 localparam  AR_START        = 3'b001,
             AR_DATA         = 3'b010,
             AR_INST         = 3'b100,
 
-            //¶ÁÏìÓ¦×´Ì¬»ú
+            //ï¿½ï¿½ï¿½ï¿½Ó¦×´Ì¬ï¿½ï¿½
             R_START         = 3'b001,
             R_DATA          = 3'b010,
             R_INST          = 3'b100,
 
-            //Ð´ÇëÇó£¬Ð´Êý¾Ý×´Ì¬»ú
+            //Ð´ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½
             AW_START        = 3'b001,
             AW_DATA         = 3'b010,
             W_DATA          = 3'b100,
 
-            //Ð´ÏìÓ¦×´Ì¬»ú
+            //Ð´ï¿½ï¿½Ó¦×´Ì¬ï¿½ï¿½
             B_START         = 2'b01,
             B_DATA          = 2'b10;
 
@@ -192,10 +192,10 @@ reg [1:0] b_next_state;
 wire reset;
 assign reset = ~resetn;
 
-wire need_wait;  //Ð´ºó¶Á³åÍ»£¬ÐèÒªµÈ´ý
+wire need_wait;  //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½Í»ï¿½ï¿½ï¿½ï¿½Òªï¿½È´ï¿½
 assign need_wait = 1'b0;
 
-/*---------------------------------¶ÁÇëÇó×´Ì¬»ú-------------------------------------*/
+/*---------------------------------ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½-------------------------------------*/
 always @(posedge clk)
     begin
         if(reset)
@@ -236,7 +236,7 @@ always @(*)
 
 /*---------------------------------------------------------------------------------*/
 
-/*---------------------------------¶ÁÏìÓ¦×´Ì¬»ú-------------------------------------*/
+/*---------------------------------ï¿½ï¿½ï¿½ï¿½Ó¦×´Ì¬ï¿½ï¿½-------------------------------------*/
 
 always @(posedge clk)
     begin
@@ -278,7 +278,7 @@ always @(*)
 
 /*---------------------------------------------------------------------------------*/
 
-/*---------------------------------Ð´ÇëÇó×´Ì¬»ú-------------------------------------*/
+/*---------------------------------Ð´ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½-------------------------------------*/
 always @(posedge clk)
     begin
         if(reset)
@@ -317,7 +317,7 @@ always @(*)
 
 /*---------------------------------------------------------------------------------*/
 
-/*---------------------------------Ð´ÏìÓ¦×´Ì¬»ú-------------------------------------*/
+/*---------------------------------Ð´ï¿½ï¿½Ó¦×´Ì¬ï¿½ï¿½-------------------------------------*/
 always @(posedge clk)
     begin
         if(reset)
@@ -352,8 +352,8 @@ always @(*)
 wire arid_for_inst;
 wire arid_for_data;
 
-assign arid_for_inst = ~arid[0];      //arid == 4'd0 ¶ÁÖ¸
-assign arid_for_data = arid[0];       //arid == 4'd1 ¶ÁÊý
+assign arid_for_inst = ~arid[0];      //arid == 4'd0 ï¿½ï¿½Ö¸
+assign arid_for_data = arid[0];       //arid == 4'd1 ï¿½ï¿½ï¿½ï¿½
 
 reg arid_for_inst_reg;
 reg arid_for_data_reg;
@@ -395,7 +395,7 @@ end
 assign rd_inst_req = inst_req && ~inst_wr;      
 assign wr_inst_req = inst_req && inst_wr;
 assign rd_data_req = dcache_uncache ? (data_req && ~data_wr):data_req;
-assign wr_data_req = data_req && data_wr;
+assign wr_data_req = data_wr;
 
 /*----------------------------------------------------------------------------------*/
 
@@ -411,7 +411,7 @@ always @(posedge clk)
         if(reset)
             arid_reg <= 4'd0;
         else if(ar_cur_state == AR_START && rd_data_req)
-            arid_reg <= 4'd1;   //1 --> È¡Êý
+            arid_reg <= 4'd1;   //1 --> È¡ï¿½ï¿½
         else if(ar_cur_state == AR_START && rd_inst_req)
             arid_reg <= 4'd0;   //0 --> È¡Ö¸
         /*
@@ -436,7 +436,7 @@ always @(posedge clk)
         if(reset)
             araddr_reg <= 32'd0;
         else if(ar_cur_state == AR_START && rd_data_req)
-            araddr_reg <= {data_addr[31:2], 2'd0};
+            araddr_reg <= {dcache_rd_addr[31:2], 2'd0};
         else if(ar_cur_state == AR_START && rd_inst_req)
             araddr_reg <= inst_addr;
         /*
@@ -513,7 +513,7 @@ always @(posedge clk)
         if(reset)
             awaddr_reg <= 32'd0;
         else if(aw_cur_state == AW_START && wr_data_req)
-            awaddr_reg <= data_addr;
+            awaddr_reg <= dcache_wr_addr;
         else if(bvalid)
             awaddr_reg <= 32'b0;
     end

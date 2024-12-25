@@ -1,6 +1,6 @@
 `define WIDTH_BR_BUS       35
 `define WIDTH_FS_TO_DS_BUS 69
-`define WIDTH_DS_TO_ES_BUS 247
+`define WIDTH_DS_TO_ES_BUS 253
 `define WIDTH_ES_TO_MS_BUS 245
 `define WIDTH_MS_TO_WS_BUS 238
 `define WIDTH_WS_TO_DS_BUS 55
@@ -9,7 +9,7 @@
 
 `define WIDTH_CSR_NUM 14
 
-//¼Ä´æÆ÷ºÅ
+//ï¿½Ä´ï¿½ï¿½ï¿½ï¿½ï¿½
 `define CSR_CRMD 14'h0
 `define CSR_PRMD 14'h1
 `define CSR_ECFG 14'h4
@@ -35,7 +35,7 @@
 `define CSR_DMW0 14'h180
 `define CSR_DMW1 14'h181
 
-//CSR·ÖÇø
+//CSRï¿½ï¿½ï¿½ï¿½
 
 //CSR_CRMD
 `define CSR_CRMD_PLV 1:0
@@ -132,22 +132,22 @@
 `define ESUBCODE_TLBR 9'h0
 
 //TLB
-//³¤¶ÈÎª4£¬ÔòTLBÎª2 ^ 4 = 16Î»
+//ï¿½ï¿½ï¿½ï¿½Îª4ï¿½ï¿½ï¿½ï¿½TLBÎª2 ^ 4 = 16Î»
 `define TLB_LEN 4   
 
-//TLBIDX (TLBË÷Òý)
+//TLBIDX (TLBï¿½ï¿½ï¿½ï¿½)
 `define TLBIDX_INDEX    3:0
 `define TLBIDX_ZERO1    23:4
 `define TLBIDX_PS       29:24
 `define TLBIDX_ZERO2    30:30
 `define TLBIDX_NE       31:31
 
-//TLBEHI (TLB±íÏî¸ßÎ»)
+//TLBEHI (TLBï¿½ï¿½ï¿½ï¿½ï¿½Î»)
 `define TLBEHI_ZERO     12:0
 `define TLBEHI_VPPN     31:13
 
-//TLBELO0, TLBELO1 (TLB±íÏîµÍÎ»)
-//ÕâÁ½¸ö¼Ä´æÆ÷·Ö±ð¶ÔÓ¦Ë«Ò³ÖÐµÄÅ¼ÊýÒ³ºÍÆæÊýÒ³£¬½á¹¹ÍêÈ«ÏàÍ¬
+//TLBELO0, TLBELO1 (TLBï¿½ï¿½ï¿½ï¿½ï¿½Î»)
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä´ï¿½ï¿½ï¿½ï¿½Ö±ï¿½ï¿½Ó¦Ë«Ò³ï¿½Ðµï¿½Å¼ï¿½ï¿½Ò³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò³ï¿½ï¿½ï¿½á¹¹ï¿½ï¿½È«ï¿½ï¿½Í¬
 `define TLBELO_V        0:0
 `define TLBELO_D        1:1
 `define TLBELO_PLV      3:2
@@ -157,17 +157,17 @@
 `define TLBELO_PPN      27:8
 `define TLBELO_ZERO2    31:28
 
-//ASID (µØÖ·¿Õ¼ä±êÊ¶·û)
+//ASID (ï¿½ï¿½Ö·ï¿½Õ¼ï¿½ï¿½Ê¶ï¿½ï¿½)
 `define ASID_ASID       9:0
 `define ASID_ZERO1      15:10
 `define ASID_ASIDBITS   23:16
 `define ASID_ZERO2      31:24
 
-//TLBRENTRY (TLBÖØÌîÀýÍâÈë¿ÚµØÖ·)
+//TLBRENTRY (TLBï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Úµï¿½Ö·)
 `define TLBRENTRY_LOW   5:0     //only read
 `define TLBRENTRY_HIGH  31:6    //read and write
 
-//DMW0,DMW1 (Ö±½ÓÓ³ÉäÅäÖÃ´°¿Ú)
+//DMW0,DMW1 (Ö±ï¿½ï¿½Ó³ï¿½ï¿½ï¿½ï¿½ï¿½Ã´ï¿½ï¿½ï¿½)
 `define DMW_PLV0        0:0
 `define DMW_ZERO1       2:1
 `define DMW_PLV3        3:3

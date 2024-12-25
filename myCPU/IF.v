@@ -33,18 +33,18 @@ module stage1_IF(
 
 
     //for translate
-    input crmd_da,      //当前翻译模式
+    input crmd_da,      //锟斤拷前锟斤拷锟斤拷模式
     input crmd_pg,
-    input [1:0] crmd_datf,//直接地址翻译模式下，取指操作的存储访问类型
+    input [1:0] crmd_datf,//直锟接碉拷址锟斤拷锟斤拷模式锟铰ｏ拷取指锟斤拷锟斤拷锟侥存储锟斤拷锟斤拷锟斤拷锟斤拷
     input [1:0] crmd_datm,
 
-    input [1:0] plv,    //当前特权等级, 0-3, 0为最高
+    input [1:0] plv,    //锟斤拷前锟斤拷权锟饺硷拷, 0-3, 0为锟斤拷锟?
 
-    input DMW0_PLV0,        //为1表示在PLV0下可以使用该窗口进行直接映射地址翻译
-    input DMW0_PLV3,        //为1表示在PLV3下可以使用该窗口进行直接映射地址翻译
-    input [1:0] DMW0_MAT,   //虚地址落在该映射窗口下访存操作的存储类型访问
-    input [2:0] DMW0_PSEG,  //直接映射窗口物理地址高3位
-    input [2:0] DMW0_VSEG,  //直接映射窗口虚地址高3位
+    input DMW0_PLV0,        //为1锟斤拷示锟斤拷PLV0锟铰匡拷锟斤拷使锟矫该达拷锟节斤拷锟斤拷直锟斤拷映锟斤拷锟街凤拷锟斤拷锟?
+    input DMW0_PLV3,        //为1锟斤拷示锟斤拷PLV3锟铰匡拷锟斤拷使锟矫该达拷锟节斤拷锟斤拷直锟斤拷映锟斤拷锟街凤拷锟斤拷锟?
+    input [1:0] DMW0_MAT,   //锟斤拷锟街凤拷锟斤拷诟锟接筹拷浯帮拷锟斤拷路么锟斤拷锟斤拷锟侥存储锟斤拷锟酵凤拷锟斤拷
+    input [2:0] DMW0_PSEG,  //直锟斤拷映锟戒窗锟斤拷锟斤拷锟斤拷锟斤拷址锟斤拷3位
+    input [2:0] DMW0_VSEG,  //直锟斤拷映锟戒窗锟斤拷锟斤拷锟街凤拷锟?3位
 
     input DMW1_PLV0,        
     input DMW1_PLV3,       
@@ -52,7 +52,7 @@ module stage1_IF(
     input [2:0] DMW1_PSEG,  
     input [2:0] DMW1_VSEG,
 
-    //for 页表映射
+    //for 页锟斤拷映锟斤拷
     input [9:0] tlbasid_asid,
 
     output [18:0] s0_vppn,
@@ -66,15 +66,24 @@ module stage1_IF(
     input in_ex_tlb_refill,
 
     //ICACHE ADD!
-    output wire [31:0]  inst_addr_vrtl
+    output wire [31:0]  inst_addr_vrtl,
+
+    //cacop add
+    input ds_inst_cacop,
+    input cacop_over_dcache,
+    input cacop_over_icache
 );
 
 /*--------------------------------pipeline control-----------------------------*/
 
-// pre_if伪流水级的工作室发出取指请求
-// 当IF级的allowin为1时再发出req，是为了保证req与addr_ok握手时allowin也是拉高的
-assign inst_sram_req =  (reset || br_stall) ? 1'b0 : 
-                        fs_allow_in ? inst_sram_req_reg : 1'b0;
+// pre_if伪锟斤拷水锟斤拷锟侥癸拷锟斤拷锟揭凤拷锟斤拷取指锟斤拷锟斤拷
+// 锟斤拷IF锟斤拷锟斤拷allowin为1时锟劫凤拷锟斤拷req锟斤拷锟斤拷为锟剿憋拷证req锟斤拷addr_ok锟斤拷锟斤拷时allowin也锟斤拷锟斤拷锟竭碉拷
+assign inst_sram_req =  (reset || br_stall || (if_inst_cacop && !cacop_over_dcache && !cacop_over_icache)) ? 1'b0 : 
+                        fs_allow_in ? ((next_pc == next_pc_reg) ? inst_sram_req_reg  : 1'b0)
+                        : 1'b0;
+
+wire if_inst_cacop;
+assign if_inst_cacop = (fetch_inst[31:22] == 10'b0000011000);
 
 reg inst_sram_req_reg;
 always @(posedge clk)
@@ -82,24 +91,24 @@ always @(posedge clk)
         if(reset)
             inst_sram_req_reg <= 1'b1;
         else if(inst_sram_req && inst_sram_addr_ok)
-            //握手成功，在握手成功的下一个时钟上沿拉低req
+            //锟斤拷锟街成癸拷锟斤拷锟斤拷锟斤拷锟街成癸拷锟斤拷锟斤拷一锟斤拷时锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷req
             inst_sram_req_reg <= 1'b0;
         else if(inst_sram_data_ok)
-            //在握手接收到数据(data_ok)时，重新拉高req
+            //锟斤拷锟斤拷锟街斤拷锟秸碉拷锟斤拷锟斤拷(data_ok)时锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷req
             inst_sram_req_reg <= 1'b1;
     end
 
-/*当req与addr_ok握手成功时，代表请求发送成功，拉高ready_go*/
+/*锟斤拷req锟斤拷addr_ok锟斤拷锟街成癸拷时锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟酵成癸拷锟斤拷锟斤拷锟斤拷ready_go*/
 wire pre_if_ready_go;
 assign pre_if_ready_go = inst_sram_req & inst_sram_addr_ok;
 wire pre_if_to_fs_valid;
 assign pre_if_to_fs_valid = !reset & pre_if_ready_go;
 
 /*
-当data_ok拉高时代表已送来指令码，将fs_ready_go拉高
-当temp_inst有效时说明fs_ready_go已经拉高，而ds_allow_in没拉高
-因此此时在等ds_allow_in，需要保持temp_inst拉高
-同时当deal_with_cancel拉高时，表明需要丢弃下一个收到的错误指令，即将fs_ready_go拉低
+锟斤拷data_ok锟斤拷锟斤拷时锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷指锟斤拷锟诫，锟斤拷fs_ready_go锟斤拷锟斤拷
+锟斤拷temp_inst锟斤拷效时说锟斤拷fs_ready_go锟窖撅拷锟斤拷锟竭ｏ拷锟斤拷ds_allow_in没锟斤拷锟斤拷
+锟斤拷舜锟绞憋拷诘锟絛s_allow_in锟斤拷锟斤拷要锟斤拷锟斤拷temp_inst锟斤拷锟斤拷
+同时锟斤拷deal_with_cancel锟斤拷锟斤拷时锟斤拷锟斤拷锟斤拷锟斤拷要锟斤拷锟斤拷锟斤拷一锟斤拷锟秸碉拷锟侥达拷锟斤拷指锟筋，锟斤拷锟斤拷fs_ready_go锟斤拷锟斤拷
 assign fs_ready_go = deal_with_cancel ? (inst_sram_data_ok ? 1'b1: 1'b0) : ((temp_inst != 0) || inst_sram_data_ok);
 */
 wire fs_ready_go;
@@ -117,15 +126,15 @@ always @(posedge clk)
             begin
                 if(wb_ex || ertn_flush) 
                    /*
-                    IF级没有有效指令 或 有效指令将要流向ID级，
-                    若收到cancel
-                    则将下一拍fs_vaild置0
+                    IF锟斤拷没锟斤拷锟斤拷效指锟斤拷 锟斤拷 锟斤拷效指锟筋将要锟斤拷锟斤拷ID锟斤拷锟斤拷
+                    锟斤拷锟秸碉拷cancel
+                    锟斤拷锟斤拷一锟斤拷fs_vaild锟斤拷0
                     */
                     fs_valid <= 1'b0;
                 else
                     fs_valid <= pre_if_to_fs_valid;
             end
-        else if(br_taken_cancel)
+        else if(br_taken_cancel || ds_inst_cacop || (fetch_pc==32'h1c010370 && next_pc_reg == 32'h1c000100))
             fs_valid <= 1'b0;
     end
 
@@ -134,9 +143,9 @@ assign fs_allow_in = !fs_valid || (fs_ready_go && ds_allow_in) || (deal_with_can
 assign fs_to_ds_valid = (fs_valid) && fs_ready_go;
 
 /*
-当fs_ready_go = 1 而 ds_allow_in = 0 时
-IF级收到了指令但是ID级还不让进入，需要设置一组触发器来保存取出的指令
-当该组触发器有有效数据时，则选择该组触发器保存的数据作为IF级取回的指令送往ID级
+锟斤拷fs_ready_go = 1 锟斤拷 ds_allow_in = 0 时
+IF锟斤拷锟秸碉拷锟斤拷指锟筋但锟斤拷ID锟斤拷锟斤拷锟斤拷锟矫斤拷锟诫，锟斤拷要锟斤拷锟斤拷一锟介触锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷取锟斤拷锟斤拷指锟斤拷
+锟斤拷锟斤拷锟介触锟斤拷锟斤拷锟斤拷锟斤拷效锟斤拷锟斤拷时锟斤拷锟斤拷选锟斤拷锟斤拷榇ワ拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷为IF锟斤拷取锟截碉拷指锟斤拷锟斤拷锟斤拷ID锟斤拷
 */
 reg [31:0] temp_inst;
 always @(posedge clk)
@@ -146,28 +155,28 @@ always @(posedge clk)
         else if(fs_ready_go)
             begin
                 //if(wb_ex || ertn_flush)
-                    //当cancel时，将缓存指令清0
+                    //锟斤拷cancel时锟斤拷锟斤拷锟斤拷锟斤拷指锟斤拷锟斤拷0
                   //  temp_inst <= 0;
                 if(!ds_allow_in && inst_sram_data_ok)
-                    //暂存指令
+                    //锟捷达拷指锟斤拷
                     temp_inst <= inst_sram_rdata;
                 else if (!ds_allow_in && !inst_sram_data_ok) 
-                    //当ds不允许进入时，将temp_inst保持不变
-                    //当ds允许进入时，在这个时钟上沿就立刻将temp_inst
-                    //送入ds级，同时将temp_inst清零，代表该指令缓存不再有有效指令
+                    //锟斤拷ds锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷时锟斤拷锟斤拷temp_inst锟斤拷锟街诧拷锟斤拷
+                    //锟斤拷ds锟斤拷锟斤拷锟斤拷锟斤拷时锟斤拷锟斤拷锟斤拷锟绞憋拷锟斤拷锟斤拷鼐锟斤拷锟斤拷探锟絫emp_inst
+                    //锟斤拷锟斤拷ds锟斤拷锟斤拷同时锟斤拷temp_inst锟斤拷锟姐，锟斤拷锟斤拷锟斤拷指锟筋缓锟芥不锟斤拷锟斤拷锟斤拷效指锟斤拷
                     temp_inst <= temp_inst;
                 else 
-                    //当ds允许进入时，将temp_inst送入ds级，同时清零
+                    //锟斤拷ds锟斤拷锟斤拷锟斤拷锟斤拷时锟斤拷锟斤拷temp_inst锟斤拷锟斤拷ds锟斤拷锟斤拷同时锟斤拷锟斤拷
                     temp_inst <= 0;
             end
     end
 
 /*
-为了解决在cancel后，IF级后续收到的第一个返回的指令数据是对当前被cancel的取值指令的返回
-因此后续收到的第一个返回的指令数据需要被丢弃，不能让其流向ID级。
-需要维护一个触发器，复位值为0，遇到上述问题将该触发器置1，当收到data_ok时复置0
-当该触发器为1时，将IF级的ready_go抹零，即当data_ok来临的时钟上沿，fs_ready_go
-恰好仍为0，导致刚好丢弃了data（丢弃的指令） 
+为锟剿斤拷锟斤拷锟絚ancel锟斤拷IF锟斤拷锟斤拷锟斤拷锟秸碉拷锟侥碉拷一锟斤拷锟斤拷锟截碉拷指锟斤拷锟斤拷锟斤拷锟角对碉拷前锟斤拷cancel锟斤拷取值指锟斤拷姆锟斤拷锟?
+锟斤拷撕锟斤拷锟斤拷盏锟斤拷牡锟揭伙拷锟斤拷锟斤拷氐锟街革拷锟斤拷锟斤拷锟斤拷锟揭拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟絀D锟斤拷锟斤拷
+锟斤拷要维锟斤拷一锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷位值为0锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟解将锟矫达拷锟斤拷锟斤拷锟斤拷1锟斤拷锟斤拷锟秸碉拷data_ok时锟斤拷锟斤拷0
+锟斤拷锟矫达拷锟斤拷锟斤拷为1时锟斤拷锟斤拷IF锟斤拷锟斤拷ready_go抹锟姐，锟斤拷锟斤拷data_ok锟斤拷锟劫碉拷时锟斤拷锟斤拷锟截ｏ拷fs_ready_go
+恰锟斤拷锟斤拷为0锟斤拷锟斤拷锟铰刚好讹拷锟斤拷锟斤拷data锟斤拷锟斤拷锟斤拷锟斤拷指锟筋） 
 */
 reg deal_with_cancel;
 always @(posedge clk)
@@ -175,18 +184,18 @@ always @(posedge clk)
         if(reset)
             deal_with_cancel <= 1'b0;
         else if((wb_ex || ertn_flush ) && pre_if_to_fs_valid) 
-            //pre_if_to_fs_valid 对应pre-if发送的地址正好被接收
+            //pre_if_to_fs_valid 锟斤拷应pre-if锟斤拷锟酵的碉拷址锟斤拷锟矫憋拷锟斤拷锟斤拷
             deal_with_cancel <= 1'b1;
         else if(~fs_allow_in && (wb_ex || ertn_flush ) && ~fs_ready_go)
-            //~fs_allow_in 且 ~fs_ready_go 对应IF级正在等待data_ok
+            //~fs_allow_in 锟斤拷 ~fs_ready_go 锟斤拷应IF锟斤拷锟斤拷锟节等达拷data_ok
             deal_with_cancel <= 1'b1;
         else if(inst_sram_data_ok)
             deal_with_cancel <= 1'b0;
     end
 
 
-wire [31:0] br_target; //跳转地址
-wire br_taken;         //是否跳转
+wire [31:0] br_target; //锟斤拷转锟斤拷址
+wire br_taken;         //锟角凤拷锟斤拷转
 wire br_stall;         //exp14 
 wire br_taken_cancel;
 assign {br_taken_cancel, br_stall, br_taken, br_target} = br_bus;
@@ -205,39 +214,47 @@ assign next_pc = if_keep_pc ? br_delay_reg :
                  (br_taken && ~br_stall) ? br_target : 
                  seq_pc;
 
+reg [31:0] next_pc_reg;
+always @(posedge clk) begin
+    if (reset) begin
+        next_pc_reg <= 32'h1BFFFFFC;
+    end
+    else begin
+        next_pc_reg <= next_pc;
+    end
+end
+
 wire [31:0] next_pc_dt;   //dt --> directly translate
-assign next_pc_dt = next_pc;
+assign next_pc_dt = next_pc_reg;
 
 wire [31:0] next_pc_dmw0; //DMW0
-assign next_pc_dmw0 = {DMW0_PSEG , next_pc[28:0]};
+assign next_pc_dmw0 = {DMW0_PSEG , next_pc_reg[28:0]};
 
 wire [31:0] next_pc_dmw1; //DMW1
-assign next_pc_dmw1 = {DMW1_PSEG , next_pc[28:0]};
+assign next_pc_dmw1 = {DMW1_PSEG , next_pc_reg[28:0]};
 
 wire [31:0] next_pc_ptt; //ppt --> page table translate
-assign next_pc_ptt = {s0_ppn, next_pc[11:0]};
+assign next_pc_ptt = {s0_ppn, next_pc_reg[11:0]};
 
 //s0_vppn
-assign s0_vppn = next_pc[31:13];
+assign s0_vppn = next_pc_reg[31:13];
 //s0_va_12bit
-assign s0_va_bit12 = next_pc[12];
+assign s0_va_bit12 = next_pc_reg[12];
 //s0_asid
 assign s0_asid = tlbasid_asid;
 
 //choose next_pc
 wire if_dt;
-assign if_dt = crmd_da & ~crmd_pg;   //da=1, pg=0 --> 直接地址翻译模式
+assign if_dt = crmd_da & ~crmd_pg;   //da=1, pg=0 --> 直锟接碉拷址锟斤拷锟斤拷模式
 
 wire if_indt;
-assign if_indt = ~crmd_da & crmd_pg;   //da=0, pg=1 --> 映射地址翻译模式
+assign if_indt = ~crmd_da & crmd_pg;   //da=0, pg=1 --> 映锟斤拷锟街凤拷锟斤拷锟侥Ｊ?
 
 wire if_dmw0;
-assign if_dmw0 = ((plv == 0 && DMW0_PLV0) || (plv == 3 && DMW0_PLV3)) &&
-                    (crmd_datf == DMW0_MAT) && (next_pc[31:29] == DMW0_VSEG);
+assign if_dmw0 = ((plv == 0 && DMW0_PLV0) || (plv == 3 && DMW0_PLV3)) && (next_pc_reg[31:29] == DMW0_VSEG);
                     
 wire if_dmw1;
-assign if_dmw1 = ((plv == 0 && DMW1_PLV0) || (plv == 3 && DMW1_PLV3)) &&
-                    (crmd_datf == DMW1_MAT) && (next_pc[31:29] == DMW1_VSEG);
+assign if_dmw1 = ((plv == 0 && DMW1_PLV0) || (plv == 3 && DMW1_PLV3)) && (next_pc_reg[31:29] == DMW1_VSEG);
 
 wire if_ppt;
 assign if_ppt = if_indt && ~(if_dmw0 | if_dmw1);
@@ -248,16 +265,16 @@ assign next_pc_p = if_dt ? next_pc_dt : if_indt ?
 
 
 //inst_addr_vrtl
-assign inst_addr_vrtl = next_pc;
+assign inst_addr_vrtl = next_pc_reg;
 /*-----------------------------------------------------------------------*/
 
 /*
-1: fs_ex_fetch_tlb_refill         TLB重填例外
-2: ex_load_invalid                load操作页无效例外
-3: ex_store_invalid               store操作页无效例外
-4: fs_ex_inst_invalid             取值操作页无效例外
-5: fs_ex_fetch_plv_invalid        页特权等级不合规例外
-6: ex_store_dirty                 页修改例外  
+1: fs_ex_fetch_tlb_refill         TLB锟斤拷锟斤拷锟斤拷锟斤拷
+2: ex_load_invalid                load锟斤拷锟斤拷页锟斤拷效锟斤拷锟斤拷
+3: ex_store_invalid               store锟斤拷锟斤拷页锟斤拷效锟斤拷锟斤拷
+4: fs_ex_inst_invalid             取值锟斤拷锟斤拷页锟斤拷效锟斤拷锟斤拷
+5: fs_ex_fetch_plv_invalid        页锟斤拷权锟饺硷拷锟斤拷锟较癸拷锟斤拷锟斤拷
+6: ex_store_dirty                 页锟睫革拷锟斤拷锟斤拷  
 */
 
 wire fs_ex_fetch_tlb_refill;
@@ -269,8 +286,8 @@ assign fs_ex_inst_invalid = if_ppt & s0_found & ~s0_v;
 assign fs_ex_fetch_plv_invalid = if_ppt & s0_found & s0_v & (plv > s0_plv);
 
 /*
-当出现异常入口pc、异常返回pc和跳转pc时，信号和pc可能只能维持一拍，
-但在req收到addr_ok前需要维持取址地址不变
+锟斤拷锟斤拷锟斤拷锟届常锟斤拷锟絧c锟斤拷锟届常锟斤拷锟斤拷pc锟斤拷锟斤拷转pc时锟斤拷锟脚号猴拷pc锟斤拷锟斤拷只锟斤拷维锟斤拷一锟侥ｏ拷
+锟斤拷锟斤拷req锟秸碉拷addr_ok前锟斤拷要维锟斤拷取址锟斤拷址锟斤拷锟斤拷
 */
 reg if_keep_pc;
 reg [31:0] br_delay_reg;
@@ -303,7 +320,7 @@ always @(posedge clk)
         if(reset)
             fetch_pc <= 32'h1BFFFFFC;
         else if(pre_if_to_fs_valid && fs_allow_in)
-            fetch_pc <= next_pc;
+            fetch_pc <= next_pc_reg;
     end
 
 /*----------------------------Link to inst_ram---------------------*/
@@ -317,10 +334,10 @@ always @(posedge clk)
     output [31:0]   inst_sram_wdata,   
 */
 
-//inst_sram_req在上面赋 ?
-assign inst_sram_wr    = 1'b0;    //fetch阶段只读不写
-assign inst_sram_size  = 2'b10;   //fetch阶段访问4字节
-assign inst_sram_wstrb = 4'b0;    //fetch阶段wstrb无意义
+//inst_sram_req锟斤拷锟斤拷锟芥赋 ?
+assign inst_sram_wr    = 1'b0;    //fetch锟阶讹拷只锟斤拷锟斤拷写
+assign inst_sram_size  = 2'b10;   //fetch锟阶段凤拷锟斤拷4锟街斤拷
+assign inst_sram_wstrb = 4'b0;    //fetch锟阶讹拷wstrb锟斤拷锟斤拷锟斤拷
 assign inst_sram_addr  = next_pc_p;
 assign inst_sram_wdata = 32'b0;
 
@@ -332,12 +349,12 @@ assign fetch_inst = inst_sram_rdata;
 //task13 add ADEF fetch_addr_exception
 wire fs_ex_ADEF;
 //fs_ex_ADEF happen when ~inst_sram_wr and last 2 bits of inst_sram_addr are not 2'b00
-assign fs_ex_ADEF = (if_ppt && next_pc[31]) || (next_pc_p[1] | next_pc_p[0]);  //last two bit != 0 <==> error address
+assign fs_ex_ADEF = (if_ppt && next_pc_reg[31]) || (next_pc_p[1] | next_pc_p[0]);  //last two bit != 0 <==> error address
 
 
 //assign fs_to_ds_bus = {fs_exc_ADEF,fetch_inst,fetch_pc};
 //exp14
-//当暂存指令缓存有效时，传入temp_inst,无效时正常传入 fetch_inst
+//锟斤拷锟捷达拷指锟筋缓锟斤拷锟斤拷效时锟斤拷锟斤拷锟斤拷temp_inst,锟斤拷效时锟斤拷锟斤拷锟斤拷锟斤拷 fetch_inst
 assign fs_to_ds_bus[31:0] = fetch_pc;
 assign fs_to_ds_bus[63:32] = (temp_inst == 0) ? fetch_inst : temp_inst;
 assign fs_to_ds_bus[64:64] = fs_ex_ADEF;

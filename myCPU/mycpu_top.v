@@ -56,52 +56,52 @@ module mycpu_top(
     input           aclk,
     input           aresetn,
 
-     //ar ¶ÁÇëÇóÍ¨µÀ
+     //ar ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¨ï¿½ï¿½
 
-    output [3:0]    arid,           //¶ÁÇëÇóIDºÅ                           È¡Ö¸0£¬È¡Êý1        
-    output [31:0]   araddr,         //¶ÁÇëÇóµÄµØÖ·                          
-    output [7:0]    arlen,          //ÇëÇó´«Êä³¤¶È(Êý¾Ý´«ÊäÅÄÊý)            ¹Ì¶¨Îª0
-    output [2:0]    arsize,         //ÇëÇó´«Êä´óÐ¡(Êý¾Ý´«ÊäÃ¿ÅÄµÄ×Ö½ÚÊý)     
-    output [1:0]    arburst,        //´«ÊäÀàÐÍ                             ¹Ì¶¨Îª2'b01
-    output [1:0]    arlock,         //Ô­×ÓËø                               
-    output [3:0]    arcache,        //CACHEÊôÐÔ
-    output [2:0]    arprot,         //±£»¤ÊôÐÔ
-    output          arvalid,        //¶ÁÇëÇóµØÖ·ÎÕÊÖ(¶ÁÇëÇóµØÖ·ÓÐÐ§)
-    input           arready,        //¶ÁÇëÇóµØÖ·ÎÕÊÖ(slave¶Ë×¼±¸ºÃ½ÓÊÕµØÖ·)
+    output [3:0]    arid,           //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½IDï¿½ï¿½                           È¡Ö¸0ï¿½ï¿½È¡ï¿½ï¿½1        
+    output [31:0]   araddr,         //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Äµï¿½Ö·                          
+    output [7:0]    arlen,          //ï¿½ï¿½ï¿½ï¿½ï¿½ä³¤ï¿½ï¿½(ï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)            ï¿½Ì¶ï¿½Îª0
+    output [2:0]    arsize,         //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¡(ï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½Ã¿ï¿½Äµï¿½ï¿½Ö½ï¿½ï¿½ï¿½)     
+    output [1:0]    arburst,        //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½                             ï¿½Ì¶ï¿½Îª2'b01
+    output [1:0]    arlock,         //Ô­ï¿½ï¿½ï¿½ï¿½                               
+    output [3:0]    arcache,        //CACHEï¿½ï¿½ï¿½ï¿½
+    output [2:0]    arprot,         //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    output          arvalid,        //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½Ð§)
+    input           arready,        //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½(slaveï¿½ï¿½×¼ï¿½ï¿½ï¿½Ã½ï¿½ï¿½Õµï¿½Ö·)
 
-    //r  ¶ÁÏìÓ¦Í¨µÀ
-    input  [3:0]    rid,            //¶ÁÇëÇóµÄIDºÅ£¬Í¬Ò»ÇëÇóµÄrid=arid
-    input  [31:0]   rdata,          //¶ÁÇëÇóµÄ¶Á»ØÊý¾Ý
-    input  [1:0]    rresp,          //±¾´Î¶ÁÇëÇóÊÇ·ñ³É¹¦Íê³É(¿ÉºöÂÔ)
-    input           rlast,          //±¾´Î¶ÁÇëÇó×îºóÒ»ÅÄÖ¸Ê¾ÐÅºÅ(¿ÉºöÂÔ)
-    input           rvalid,         //¶ÁÇëÇóÊý¾ÝÎÕÊÖ(¶ÁÇëÇóÊý¾ÝÓÐÐ§)
-    output          rready,         //¶ÁÇëÇóÊý¾ÝÎÕÊÖ(master¶Ë×¼±¸ºÃ½ÓÊÕÊý¾Ý)
+    //r  ï¿½ï¿½ï¿½ï¿½Ó¦Í¨ï¿½ï¿½
+    input  [3:0]    rid,            //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½IDï¿½Å£ï¿½Í¬Ò»ï¿½ï¿½ï¿½ï¿½ï¿½rid=arid
+    input  [31:0]   rdata,          //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    input  [1:0]    rresp,          //ï¿½ï¿½ï¿½Î¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½É¹ï¿½ï¿½ï¿½ï¿½(ï¿½Éºï¿½ï¿½ï¿½)
+    input           rlast,          //ï¿½ï¿½ï¿½Î¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½Ö¸Ê¾ï¿½Åºï¿½(ï¿½Éºï¿½ï¿½ï¿½)
+    input           rvalid,         //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð§)
+    output          rready,         //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(masterï¿½ï¿½×¼ï¿½ï¿½ï¿½Ã½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
 
-    //aw  Ð´ÇëÇóÍ¨µÀ
-    output [3:0]    awid,           //Ð´ÇëÇóµÄIDºÅ
-    output [31:0]   awaddr,         //Ð´ÇëÇóµÄµØÖ·
-    output [7:0]    awlen,          //ÇëÇó´«ÊäµÄ³¤¶È
-    output [2:0]    awsize,         //ÇëÇó´«ÊäµÄ´óÐ¡(Êý¾Ý´«ÊäÃ¿ÅÄµÄ×Ö½ÚÊý)
-    output [1:0]    awburst,        //´«ÊäÀàÐÍ
-    output [1:0]    awlock,         //Ô­×ÓËø
-    output [1:0]    awcache,        //CACHEÊôÐÔ
-    output [2:0]    awprot,         //±£»¤ÊôÐÔ
-    output          awvalid,        //Ð´ÇëÇóµØÖ·ÎÕÊÖ(Ð´ÇëÇóµØÖ·ÓÐÐ§)
-    input           awready,        //Ð´ÇëÇóµØÖ·ÎÕÊÖ(slave¶Ë×¼±¸ºÃ½ÓÊÕµØÖ·)
+    //aw  Ð´ï¿½ï¿½ï¿½ï¿½Í¨ï¿½ï¿½
+    output [3:0]    awid,           //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½IDï¿½ï¿½
+    output [31:0]   awaddr,         //Ð´ï¿½ï¿½ï¿½ï¿½Äµï¿½Ö·
+    output [7:0]    awlen,          //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä³ï¿½ï¿½ï¿½
+    output [2:0]    awsize,         //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä´ï¿½Ð¡(ï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½Ã¿ï¿½Äµï¿½ï¿½Ö½ï¿½ï¿½ï¿½)
+    output [1:0]    awburst,        //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    output [1:0]    awlock,         //Ô­ï¿½ï¿½ï¿½ï¿½
+    output [1:0]    awcache,        //CACHEï¿½ï¿½ï¿½ï¿½
+    output [2:0]    awprot,         //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    output          awvalid,        //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½(Ð´ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½Ð§)
+    input           awready,        //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½(slaveï¿½ï¿½×¼ï¿½ï¿½ï¿½Ã½ï¿½ï¿½Õµï¿½Ö·)
 
-    //w  Ð´Êý¾ÝÍ¨µÀ
-    output [3:0]    wid,            //Ð´ÇëÇóµÄIDºÅ
-    output [31:0]   wdata,          //Ð´ÇëÇóµÄÐ´Êý¾Ý
-    output [3:0]    wstrb,          //×Ö½ÚÑ¡Í¨Î»
-    output          wlast,          //±¾´ÎÐ´ÇëÇóµÄ×îºóÒ»ÅÄÊý¾ÝµÄÖ¸Ê¾ÐÅºÅ
-    output          wvalid,         //Ð´ÇëÇóÊý¾ÝÎÕÊÖ(Ð´ÇëÇóÊý¾ÝÓÐÐ§)
-    input           wready,         //Ð´ÇëÇóÊý¾ÝÎÕÊÖ(slave¶Ë×¼±¸ºÃ½ÓÊÕÊý¾Ý)
+    //w  Ð´ï¿½ï¿½ï¿½ï¿½Í¨ï¿½ï¿½
+    output [3:0]    wid,            //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½IDï¿½ï¿½
+    output [31:0]   wdata,          //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½ï¿½ï¿½
+    output [3:0]    wstrb,          //ï¿½Ö½ï¿½Ñ¡Í¨Î»
+    output          wlast,          //ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ýµï¿½Ö¸Ê¾ï¿½Åºï¿½
+    output          wvalid,         //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð§)
+    input           wready,         //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(slaveï¿½ï¿½×¼ï¿½ï¿½ï¿½Ã½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
 
-    //b  Ð´ÏìÓ¦Í¨µÀ
+    //b  Ð´ï¿½ï¿½Ó¦Í¨ï¿½ï¿½
     input  [3:0]    bid,            //bid = wid = awid
-    input  [1:0]    bresp,          //±¾´ÎÐ´ÇëÇóÊÇ·ñ³É¹¦Íê³É
-    input           bvalid,         //Ð´ÇëÇóÏìÓ¦ÎÕÊÖ(Ð´ÇëÇóÏìÓ¦ÓÐÐ§)
-    output          bready,         //Ð´ÇëÇóÏìÓ¦ÎÕÊÖ(master¶Ë×¼±¸ºÃ½ÓÊÕÐ´ÏìÓ¦)
+    input  [1:0]    bresp,          //ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½É¹ï¿½ï¿½ï¿½ï¿½
+    input           bvalid,         //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½(Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½Ð§)
+    output          bready,         //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½(masterï¿½ï¿½×¼ï¿½ï¿½ï¿½Ã½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½Ó¦)
 
     // debug
     output [31:0] debug_wb_pc     ,
@@ -175,6 +175,14 @@ wire [31:0] cpu_data_rdata;
     wire        dcache_wr_rdy;
     wire        dcache_uncache;
     wire        axi_uncache;
+
+    //cacop add
+    wire [31:0] cacop_addr;
+    wire [ 4:0] cacop_code;
+    wire        cacop_icache;
+    wire        cacop_dcache;
+    wire        cacop_over_dcache;
+    wire        cacop_over_icache;
     
 cpu_bridge_axi u_cpu_bridge_axi(
     .clk        (aclk),
@@ -302,22 +310,30 @@ mycpu u_cpu(
     
     //dcache add
     .data_addr_vrtl   (data_addr_vrtl),
-    .data_uncache   (dcache_uncache)
-    
+    .data_uncache   (dcache_uncache),
+
+    //cacop add
+    .cacop_code        (cacop_code),
+    .cacop_addr        (cacop_addr),
+    .cacop_icache      (cacop_icache),
+    .cacop_dcache      (cacop_dcache),
+
+    .cacop_over_dcache        (cacop_over_dcache),
+    .cacop_over_icache        (cacop_over_icache)    
 );
 
-cache icache(
+icache icache(
     //----------cpu interface------
         .clk    (aclk                       ),
         .resetn (aresetn                    ),
         .valid  (cpu_inst_req               ),//pre-if request valid
         .op     (cpu_inst_wr                ),//always 0==read
         .index  (inst_addr_vrtl[11:4]       ),
-        .tag    (cpu_inst_addr[31:12]       ),//from tlb:inst_sram_addr[31:12]=ÊµµØÖ·
+        .tag    (cpu_inst_addr[31:12]       ),//from tlb:inst_sram_addr[31:12]=Êµï¿½ï¿½Ö·
         .offset (inst_addr_vrtl[3:0]        ),
         .wstrb  (cpu_inst_wstrb             ),
         .wdata  (cpu_inst_wdata             ),
-        .addr_ok(icache_addr_ok             ),//output Á÷Ë®Ïß·½Ïò ×èÈûÁ÷Ë®ÏßµÄÖ¸Áî
+        .addr_ok(icache_addr_ok             ),//output ï¿½ï¿½Ë®ï¿½ß·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë®ï¿½ßµï¿½Ö¸ï¿½ï¿½
         .data_ok(icache_data_ok             ),
         .rdata  (icache_rdata               ),//output
         //--------AXI read interface-------
@@ -325,20 +341,26 @@ cache icache(
         .rd_type(icache_rd_type             ),
         .rd_addr(icache_rd_addr             ),
 
-        .rd_rdy   (icache_rd_rdy            ),//input ×ÜÏß·¢À´µÄ
+        .rd_rdy   (icache_rd_rdy            ),//input ï¿½ï¿½ï¿½ß·ï¿½ï¿½ï¿½ï¿½ï¿½
         .ret_valid(icache_ret_valid         ),
         .ret_last (icache_ret_last          ),
         .ret_data (icache_ret_data          ),
 
         //--------AXI write interface------
-        .wr_req (icache_wr_req              ),//output,¶ÔÓÚicacheÓÀÔ¶ÊÇ0
+        .wr_req (icache_wr_req              ),//output,ï¿½ï¿½ï¿½ï¿½icacheï¿½ï¿½Ô¶ï¿½ï¿½0
         .wr_type(icache_wr_type             ),
         .wr_addr(icache_wr_addr             ),
         .wr_wstrb(icache_wr_strb             ),
         .wr_data(icache_wr_data             ),
-        .wr_rdy (icache_wr_rdy              ),//icache²»»áÕæÕýÒªÐ´sram£¬ÖÃ1Ã»ÓÐ¹ØÏµ
+        .wr_rdy (icache_wr_rdy              ),//icacheï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÒªÐ´sramï¿½ï¿½ï¿½ï¿½1Ã»ï¿½Ð¹ï¿½Ïµ
 
-        .uncache(icache_uncache             )
+        .uncache(icache_uncache             ),
+
+        .cacop_icache(cacop_icache          ),
+        .cacop_addr  (cacop_addr            ),
+        .cacop_code  (cacop_code            ),
+
+        .cacop_over  (cacop_over_icache      )
 );
 
 
@@ -349,11 +371,11 @@ dcache dcache(
         .valid  (cpu_data_req               ),//pre-if request valid
         .op     (cpu_data_wr                ),//always 0==read
         .index  (data_addr_vrtl[11:4]       ),
-        .tag    (cpu_data_addr[31:12]       ),//from tlb:inst_sram_addr[31:12]=ÊµµØÖ·
+        .tag    (cpu_data_addr[31:12]       ),//from tlb:inst_sram_addr[31:12]=Êµï¿½ï¿½Ö·
         .offset (data_addr_vrtl[3:0]        ),
         .wstrb  (cpu_data_wstrb             ),
         .wdata  (cpu_data_wdata             ),
-        .addr_ok(dcache_addr_ok             ),//output Á÷Ë®Ïß·½Ïò ×èÈûÁ÷Ë®ÏßµÄÖ¸Áî
+        .addr_ok(dcache_addr_ok             ),//output ï¿½ï¿½Ë®ï¿½ß·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë®ï¿½ßµï¿½Ö¸ï¿½ï¿½
         .data_ok(dcache_data_ok             ),
         .rdata  (dcache_rdata               ),//output
         //--------AXI read interface-------
@@ -361,13 +383,13 @@ dcache dcache(
         .rd_type(dcache_rd_type             ),
         .rd_addr(dcache_rd_addr             ),
 
-        .rd_rdy   (dcache_rd_rdy            ),//input ×ÜÏß·¢À´µÄ
+        .rd_rdy   (dcache_rd_rdy            ),//input ï¿½ï¿½ï¿½ß·ï¿½ï¿½ï¿½ï¿½ï¿½
         .ret_valid(dcache_ret_valid         ),
         .ret_last (dcache_ret_last          ),
         .ret_data (dcache_ret_data          ),
 
         //--------AXI write interface------
-        .wr_req (dcache_wr_req              ),//output,¶ÔÓÚicacheÓÀÔ¶ÊÇ0
+        .wr_req (dcache_wr_req              ),//output,ï¿½ï¿½ï¿½ï¿½icacheï¿½ï¿½Ô¶ï¿½ï¿½0
         .wr_type(dcache_wr_type             ),
         .wr_addr(dcache_wr_addr             ),
         .wr_wstrb(dcache_wr_strb             ),
@@ -375,7 +397,12 @@ dcache dcache(
         .wr_rdy (dcache_wr_rdy              ),
         .axi_uncache(axi_uncache),
         
-        .uncache(dcache_uncache             )
+        .uncache(dcache_uncache             ),
+
+        .cacop_dcache(cacop_dcache          ),
+        .cacop_addr  (cacop_addr            ),
+        .cacop_code  (cacop_code            ),
+        .cacop_over  (cacop_over_dcache     )
 );
 
 endmodule

@@ -42,7 +42,16 @@ module mycpu(
     
     //dcache add
     output wire [31:0] data_addr_vrtl,
-    output wire        data_uncache
+    output wire        data_uncache,
+
+    //cacop add
+    output wire [4:0]  cacop_code,
+    output wire [31:0] cacop_addr,
+    output wire        cacop_icache,
+    output wire        cacop_dcache,
+
+    input  wire        cacop_over_dcache,
+    input  wire        cacop_over_icache
     
 );
 wire         reset;
@@ -269,9 +278,13 @@ wire [31:0] tlb_reflush_pc;
 wire ex_tlb_refill;
 
 
-/*----------------------------------------------------------*/
+/*--------------------------cache add---------------------------*/
 
 wire [31:0] inst_addr_vrtl;
+wire ds_inst_cacop;
+
+
+/*----------------------------------------------------------*/
 
 /*---------------------------FETCH--------------------------*/
 /*
@@ -363,7 +376,11 @@ stage1_IF fetch(
 
     .in_ex_tlb_refill   (ex_tlb_refill),
 
-    .inst_addr_vrtl     (inst_addr_vrtl)
+    .inst_addr_vrtl     (inst_addr_vrtl),
+
+    .ds_inst_cacop      (ds_inst_cacop),
+    .cacop_over_dcache         (cacop_over_dcache),
+    .cacop_over_icache         (cacop_over_icache)
 );
 
 /*----------------------------------------------------------*/
@@ -423,7 +440,9 @@ stage2_ID decode(
     .data_sram_data_ok  (data_sram_data_ok),
 
     .tlb_zombie         (tlb_zombie),
-    .tlb_reflush        (tlb_reflush)
+    .tlb_reflush        (tlb_reflush),
+
+    .ds_inst_cacop      (ds_inst_cacop)
 );
 
 /*----------------------------------------------------------*/
@@ -539,7 +558,16 @@ stage3_EX ex(
     
     .data_addr_vrtl     (data_addr_vrtl),
 //    .data_uncache       ()
-    .data_uncache       (data_uncache)
+    .data_uncache       (data_uncache),
+
+    //cacop add
+    .es_cacop_code      (cacop_code),
+    .cacop_addr         (cacop_addr),
+    .cacop_icache       (cacop_icache),
+    .cacop_dcache       (cacop_dcache),
+
+    .cacop_over_dcache         (cacop_over_dcache),
+    .cacop_over_icache         (cacop_over_icache)
 );
 
 /*----------------------------------------------------------*/

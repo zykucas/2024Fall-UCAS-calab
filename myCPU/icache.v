@@ -1,54 +1,61 @@
-module cache(
+module icache(
     input       clk,
     input       resetn,
     
-    //cacheÄ£¿éÓëCPUÁ÷Ë®ÏßµÄ½»»¥½Ó¿Ú
-    input           valid,          //cpu·¢À´µÄÇëÇóÓÐÐ§
-    input           op,             //0 --> ¶Á ; 1 --> Ð´
-    input  [7:0]    index,          //µØÖ·µÄindexÓò(addr[11:4])(Ðé)
-    input  [19:0]   tag,            //ÐéÊµ×ª»»ºóµÄµØÖ·¸ß20Î»
-    input  [3:0]    offset,         //µØÖ·µÄoffsetÓò(addr[3:0])
-    input  [3:0]    wstrb,          //Ð´×Ö½ÚÊ¹ÄÜÐÅºÅ
-    input  [31:0]   wdata,          //Ð´Êý¾Ý
+    //cacheÄ£ï¿½ï¿½ï¿½ï¿½CPUï¿½ï¿½Ë®ï¿½ßµÄ½ï¿½ï¿½ï¿½ï¿½Ó¿ï¿½
+    input           valid,          //cpuï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð§
+    input           op,             //0 --> ï¿½ï¿½ ; 1 --> Ð´
+    input  [7:0]    index,          //ï¿½ï¿½Ö·ï¿½ï¿½indexï¿½ï¿½(addr[11:4])(ï¿½ï¿½)
+    input  [19:0]   tag,            //ï¿½ï¿½Êµ×ªï¿½ï¿½ï¿½ï¿½Äµï¿½Ö·ï¿½ï¿??20Î»
+    input  [3:0]    offset,         //ï¿½ï¿½Ö·ï¿½ï¿½offsetï¿½ï¿½(addr[3:0])
+    input  [3:0]    wstrb,          //Ð´ï¿½Ö½ï¿½Ê¹ï¿½ï¿½ï¿½Åºï¿½
+    input  [31:0]   wdata,          //Ð´ï¿½ï¿½ï¿½ï¿½
     
-    output          addr_ok,        //¸Ã´ÎÇëÇóµÄµØÖ·´«ÊäOK
-    output          data_ok,        //¸Ã´ÎÇëÇóµÄÊý¾Ý´«ÊäOK
-    output [31:0]   rdata,          //¶Ácache½á¹û
+    output          addr_ok,        //ï¿½Ã´ï¿½ï¿½ï¿½ï¿½ï¿½Äµï¿½Ö·ï¿½ï¿½ï¿½ï¿½OK
+    output          data_ok,        //ï¿½Ã´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½OK
+    output [31:0]   rdata,          //ï¿½ï¿½cacheï¿½ï¿½ï¿??
 
-    //cacheÄ£¿éÓëAXI×ÜÏß½Ó¿ÚÄ£¿é½Ó¿Ú
+    //cacheÄ£ï¿½ï¿½ï¿½ï¿½AXIï¿½ï¿½ï¿½ß½Ó¿ï¿½Ä£ï¿½ï¿½Ó¿ï¿??
 
     //part1 --> read
-    output          rd_req,         //¶ÁÇëÇóÓÐÐ§ÐÅºÅ
-    output [2:0]    rd_type,        //¶ÁÇëÇóÀàÐÍ:
-    //3'b000 : ×Ö½Ú ; 3'b001 : °ë×Ö ; 3'b010 : ×Ö ; 3'b100 : cacheÐÐ
-    output [31:0]   rd_addr,        //¶ÁÇëÇóÆðÊ¼µØÖ·
-    input           rd_rdy,         //¶ÁÇëÇóÄÜ·ñ±»½ÓÊÕµÄÎÕÊÖÐÅºÅ
-    input           ret_valid,      //·µ»ØÊý¾ÝÓÐÐ§ÐÅºÅºó£¬¸ßµçÆ½ÓÐÐ§
-    input           ret_last,       //·µ»ØÊý¾ÝÊÇÒ»´Î¶ÁÇëÇó¶ÔÓ¦µÄ×îºóÒ»¸ö·µ»ØÊý¾Ý
-    input  [31:0]   ret_data,       //¶Á·µ»ØÊý¾Ý
+    output          rd_req,         //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð§ï¿½Åºï¿½
+    output [2:0]    rd_type,        //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½:
+    //3'b000 : ï¿½Ö½ï¿½ ; 3'b001 : ï¿½ï¿½ï¿½ï¿½ ; 3'b010 : ï¿½ï¿½ ; 3'b100 : cacheï¿½ï¿½
+    output [31:0]   rd_addr,        //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½Ö·
+    input           rd_rdy,         //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü·ñ±»½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Åºï¿½
+    input           ret_valid,      //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð§ï¿½ÅºÅºó£¬¸ßµï¿½Æ½ï¿½ï¿½Ð§
+    input           ret_last,       //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½Î¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    input  [31:0]   ret_data,       //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
     //part2 --> write
-    output          wr_req,         //Ð´ÇëÇóÓÐÐ§ÐÅºÅ
-    output [2:0]    wr_type,        //Ð´ÇëÇóÀàÐÍ
-    //3'b000 : ×Ö½Ú ; 3'b001 : °ë×Ö ; 3'b010 : ×Ö ; 3'b100 : cacheÐÐ
-    output [31:0]   wr_addr,        //Ð´ÇëÇóÆðÊ¼µØÖ·
-    output [3:0]    wr_wstrb,       //Ð´²Ù×÷µÄ×Ö½ÚÑÚÂë
-    output [127:0]  wr_data,        //Ð´Êý¾Ý
-    input           wr_rdy,          //Ð´ÇëÇóÄÜ·ñ±»½ÓÊÕµÄÎÕÊÖÐÅºÅ
+    output          wr_req,         //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð§ï¿½Åºï¿½
+    output [2:0]    wr_type,        //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    //3'b000 : ï¿½Ö½ï¿½ ; 3'b001 : ï¿½ï¿½ï¿½ï¿½ ; 3'b010 : ï¿½ï¿½ ; 3'b100 : cacheï¿½ï¿½
+    output [31:0]   wr_addr,        //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½Ö·
+    output [3:0]    wr_wstrb,       //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö½ï¿½ï¿½ï¿½ï¿½ï¿½
+    output [127:0]  wr_data,        //Ð´ï¿½ï¿½ï¿½ï¿½
+    input           wr_rdy,          //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½Ü·ñ±»½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Åºï¿½
     
-    input           uncache
+    input           uncache,
+
+    //exp23 cacop add
+    input           cacop_icache,
+    input  [31:0]   cacop_addr,
+    input  [4:0]    cacop_code,
+    output          cacop_over
+
 );
 
 /*-----------------------------------????-----------------------------------------*/
 
 localparam  IDLE            = 5'b00001,
             LOOKUP          = 5'b00010,
-            //½²ÒåÖÐÃû×ÖÎªMISS£¬µ«ËÆºõ²¢²»×¼È·£¬Êµ¼ÊÒª×öµÄ¹¤×÷ÊÇ½«Ôà¿éÐ´»Ø
+            //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÎªMISSï¿½ï¿½ï¿½ï¿½ï¿½Æºï¿½ï¿½ï¿½ï¿½ï¿½×¼È·ï¿½ï¿½Êµï¿½ï¿½Òªï¿½ï¿½ï¿½Ä¹ï¿½ï¿½ï¿½ï¿½Ç½ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿??
             DIRTY_WB        = 5'b00100,
             REPLACE         = 5'b01000,
             REFILL          = 5'b10000,
 
-            //Write Buffer×´Ì¬»ú
+            //Write Buffer×´Ì¬ï¿½ï¿½
             WB_IDLE         = 2'b01,
             WB_WRITE        = 2'b10;
 
@@ -57,7 +64,7 @@ reg [4:0] next_state;
 reg [1:0] wb_curr_state;
 reg [1:0] wb_next_state;
 
-//part1: Ö÷×´Ì¬»ú
+//part1: ï¿½ï¿½×´Ì¬ï¿½ï¿½
 
 always @(posedge clk)
     begin
@@ -72,57 +79,67 @@ always @(*)
         case(curr_state)
             IDLE:
                 begin
-                    if(~valid)
-                        //Èç¹ûcpuÃ»ÓÐ·¢À´ÇëÇó£¬Í£ÁôÔÚIDLE
+                    if (cacop_cst) begin
+                        next_state <= LOOKUP;
+                    end
+                    else if(~valid)
+                        //ï¿½ï¿½ï¿½cpuÃ»ï¿½Ð·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í£ï¿½ï¿½ï¿½ï¿½IDLE
                         next_state <= IDLE;
                     else
                         begin
                             if(hit_write)
-                                //Èç¹ûÓÐÇëÇóµ«¸ÃÇëÇóÓëHit Write³åÍ»¶øÎÞ·¨±»Cache½ÓÊÕ
+                                //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½óµ«¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Hit Writeï¿½ï¿½Í»ï¿½ï¿½ï¿½Þ·ï¿½ï¿½ï¿½Cacheï¿½ï¿½ï¿½ï¿½
                                 next_state <= IDLE;
                             else
-                                //ÓÐÇëÇóÇÒ²»³åÍ»
+                                //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½Í»
                                 next_state <= LOOKUP;
                         end
                 end
             LOOKUP:
             begin
-                if(cache_hit && !buff_uncache)
+                if (cacop_cst) begin
+                    if (cache_hit) begin
+                        next_state = REFILL;
+                    end
+                    else
+                        next_state = IDLE;
+                end
+                else if(cache_hit && !buff_uncache)
                     begin
                         if(~valid)
-                            //ÈôcacheÃüÖÐÇÒÃ»ÓÐÐÂÇëÇó£¬Ôò·µ»ØIDLEµÈ´ý
+                            //ï¿½ï¿½cacheï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ò·µ»ï¿½IDLEï¿½È´ï¿½
                             next_state <= IDLE;
                         else
                             begin
-                            //ÈôcacheÃüÖÐµ«ÓÐÐÂÇëÇó£¬Ðè·ÖÇé¿öÌÖÂÛ
+                            //ï¿½ï¿½cacheï¿½ï¿½ï¿½Ðµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                                 if(hit_write)
-                                    //ÓÐÐÂÇëÇóµ«ÊÇhit write³åÍ»£¬ÔÝÊ±ÎÞ·¨½ÓÊÕ
-                                    //ÔÝÊ±Ã»ÓÐ´¦ÀíHit WriteµÄµÚÒ»ÖÖÇé¿ö
+                                    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½hit writeï¿½ï¿½Í»ï¿½ï¿½ï¿½ï¿½Ê±ï¿½Þ·ï¿½ï¿½ï¿½ï¿½ï¿½
+                                    //ï¿½ï¿½Ê±Ã»ï¿½Ð´ï¿½ï¿½ï¿½Hit Writeï¿½Äµï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿??
                                     next_state <= IDLE;
                                 else
-                                    //¿ÉÒÔ½ÓÊÕÐÂÇëÇó
+                                    //ï¿½ï¿½ï¿½Ô½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                                     next_state <= LOOKUP;
                             end
                     end
                 else
                     begin
                         if(if_dirty || (buff_uncache && buff_op == 1))
-                            //Èô±»Ìæ»»¿éÊÇÔà¿é£¬ÔòÐèÒªÐ´»Ø
+                            //ï¿½ï¿½ï¿½ï¿½ï¿½æ»»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½é£¬ï¿½ï¿½ï¿½ï¿½ÒªÐ´ï¿½ï¿??
                             next_state <= DIRTY_WB;
                         else
-                            //Èô±»Ìæ»»¿é·ÇÔà¿é£¬Ôò²»ÐèÒªÐ´»Ø
+                            //ï¿½ï¿½ï¿½ï¿½ï¿½æ»»ï¿½ï¿½ï¿½ï¿½ï¿½é£¬ï¿½ï¿½ï¿½ï¿½ÒªÐ´ï¿½ï¿½
                             next_state <= REPLACE;
                     end
             end
         DIRTY_WB:
             begin
                 if(~wr_rdy)
-                    //×ÜÏß²¢Ã»ÓÐ×¼±¸ºÃ½ÓÊÜÐ´ÇëÇó£¬×´Ì¬×èÈûÔÚDIRTY_WB
+                    //ï¿½ï¿½ï¿½ß²ï¿½Ã»ï¿½ï¿½×¼ï¿½ï¿½ï¿½Ã½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½DIRTY_WB
                         next_state <= DIRTY_WB;
                     else
-                        //×ÜÏß×¼±¸ºÃ½ÓÊÜÐ´ÇëÇó£¬´ËÊ±½«·¢³öwr_req
-                        //Í¬Ê±·¢³öµÄÓÐwr_type,wr_addr,wr_wtrb,wr_data
-                        //Òò´Ëwr_reqµÄÅÐ¶ÏÌõ¼þÓ¦Îª
+                        //ï¿½ï¿½ï¿½ï¿½×¼ï¿½ï¿½ï¿½Ã½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½ï¿½ó£¬´ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½wr_req
+                        //Í¬Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½wr_type,wr_addr,wr_wtrb,wr_data
+                        //ï¿½ï¿½ï¿½wr_reqï¿½ï¿½ï¿½Ð¶ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦Îª
                         //(curr_state == DIRTY_WB) && (wr_rdy) 
                         next_state <= REPLACE;
                 end
@@ -131,19 +148,22 @@ always @(*)
                     if(buff_op==1)
                         next_state <= IDLE;
                     else if(~rd_rdy)
-                        //AXI×ÜÏßÃ»ÓÐ×¼±¸ºÃ½ÓÊÕ¶ÁÇëÇó
+                        //AXIï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½×¼ï¿½ï¿½ï¿½Ã½ï¿½ï¿½Õ¶ï¿½ï¿½ï¿½ï¿½ï¿½
                         next_state <= REPLACE;
                     else
-                        //AXI×ÜÏß×¼±¸ºÃ½ÓÊÕ¶ÁÇëÇó
-                        //Ò²¶ÔAXI×ÜÏß·¢ÆðÈ±Ê§cacheµÄ¶ÁÇëÇó
+                        //AXIï¿½ï¿½ï¿½ï¿½×¼ï¿½ï¿½ï¿½Ã½ï¿½ï¿½Õ¶ï¿½ï¿½ï¿½ï¿½ï¿½
+                        //Ò²ï¿½ï¿½AXIï¿½ï¿½ï¿½ß·ï¿½ï¿½ï¿½È±Ê§cacheï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ï¿½
                         next_state <= REFILL;
                 end
             REFILL:
                 begin
-                    if(ret_valid && ret_last)
+                    if (cacop_cst) begin
+                        next_state = IDLE;
+                    end
+                    else if(ret_valid && ret_last)
                          next_state <= IDLE;
                     // if(ret_valid && ~ret_last)
-                    //     //²¢Î´·¢À´×îºóÒ»¸ö32Î»Êý¾Ý
+                    //     //ï¿½ï¿½Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿??32Î»ï¿½ï¿½ï¿½ï¿½
                     //     next_state <= REFILL;
                     // else if(ret_valid && ret_last)
                     //     next_state <= IDLE;
@@ -155,7 +175,7 @@ always @(*)
         endcase
     end
 
-//part2: Write Buffer×´Ì¬»ú
+//part2: Write Buffer×´Ì¬ï¿½ï¿½
 
 always @(posedge clk)
     begin
@@ -171,7 +191,7 @@ always @(*)
             WB_IDLE:
                 begin
                     if(((curr_state == LOOKUP) && (op == 1) && cache_hit) || (curr_state == REFILL && buff_op == 1 && ret_last && ret_valid))
-                        //Ö÷×´Ì¬»ú´¦ÓÚLOOKUP×´Ì¬ÇÒ·¢ÏÖStore²Ù×÷ÃüÖÐCache
+                        //ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½LOOKUP×´Ì¬ï¿½Ò·ï¿½ï¿½ï¿½Storeï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Cache
                         wb_next_state <= WB_WRITE;
                     else
                         wb_next_state <= WB_IDLE;
@@ -179,7 +199,7 @@ always @(*)
             WB_WRITE:
                 begin
                     if((curr_state == LOOKUP) && (op == 1) && cache_hit)
-                        //Ö÷×´Ì¬»ú·¢ÏÖÐÂµÄHit Write
+                        //ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Âµï¿½Hit Write
                         wb_next_state <= WB_WRITE;
                     else
                         wb_next_state <= WB_IDLE;
@@ -194,20 +214,20 @@ always @(*)
 /*-------------------------------BLOCK RAM(v,tag)----------------------------------*/
 reg [19:0] reg_tag;
 
-//µ±½ÓÊÜÇëÇóµÄÍ¬Ê±£¬½«´ÓMMU´«À´Êµtag£¬ÐèÒª½«Æä±£´æ
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¬Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½MMUï¿½ï¿½ï¿½ï¿½Êµtagï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ä±£ï¿½ï¿½
 always @(posedge clk)
     begin
         if(~resetn)
             reg_tag <= 0;
         else if((curr_state == IDLE && valid && wb_curr_state != WB_WRITE) || (curr_state == LOOKUP && next_state == LOOKUP))
-            reg_tag <= tag;
+            reg_tag <= cacop_cst ? cacop_addr[31:12] : tag;
         else begin
             reg_tag <= reg_tag;
         end
     end
 
-//ÕâÀïÎªLOOKUP½×¶Î²éÕÒÊ±µÄÃüÖÐÂ·
-//ÐèÒªÓëreplace_wayÇø·Ö¿ª
+//ï¿½ï¿½ï¿½ï¿½ÎªLOOKUPï¿½×¶Î²ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â·
+//ï¿½ï¿½Òªï¿½ï¿½replace_wayï¿½ï¿½ï¿½Ö¿ï¿½
 
 wire way0_v;
 wire way1_v;
@@ -236,18 +256,27 @@ always @(posedge clk)
 
 assign way0_hit = way0_v && (way0_tag == reg_tag);
 assign way1_hit = way1_v && (way1_tag == reg_tag);
-assign cache_hit = (buff_index_reg == buff_index) && (way0_hit || way1_hit);
+assign cache_hit =  cacop_cst ? (way0_hit || way1_hit) :
+                    ((buff_index_reg == buff_index) && (way0_hit || way1_hit));
 
-assign tagv_we[0] = !uncache && ((curr_state == REFILL) && (buff_way == 0));
-assign tagv_we[1] = !uncache && ((curr_state == REFILL) && (buff_way == 1));
+assign tagv_we[0] = (!uncache && ((curr_state == REFILL) && (buff_way == 0 || (cacop_cst && way0_hit)))) || (cacop_init && cacop_init_way == 0);
+assign tagv_we[1] = (!uncache && ((curr_state == REFILL) && (buff_way == 1 || (cacop_cst && way1_hit)))) || (cacop_init && cacop_init_way == 1);
 
-assign tagv_addr[0] = buff_index;
-assign tagv_addr[1] = buff_index;
+assign tagv_addr[0] = cacop_init ? cacop_init_index : 
+                      cacop_cst ? cacop_addr[11:4] :
+                      buff_index;
+assign tagv_addr[1] = cacop_init ? cacop_init_index : 
+                      cacop_cst ? cacop_addr[11:4] :  
+                      buff_index;
 
-assign tagv_wdata[0] = {1'b1, reg_tag};
-assign tagv_wdata[1] = {1'b1, reg_tag};
+assign tagv_wdata[0] = cacop_init ? 0 : 
+                       cacop_cst ? {1'b0,reg_tag} :
+                       {1'b1, reg_tag};
+assign tagv_wdata[1] = cacop_init ? 0 : 
+                       cacop_cst ? {1'b0,reg_tag} :
+                       {1'b1, reg_tag};
 
-//¹²Á½Â·£¬Ã¿Â·4x(20 + 1)£¬¹²8¿ébank
+//ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½Ã¿Â·4x(20 + 1)ï¿½ï¿½ï¿½ï¿½8ï¿½ï¿½bank
 wire        tagv_we   [1:0];
 wire [7:0]  tagv_addr [1:0];       //depth = 256 = 2 ^ 8
 wire [20:0] tagv_wdata[1:0];
@@ -289,7 +318,7 @@ always @(posedge clk)
                 way1_d_reg <= 256'b0;
             end
         if(curr_state == LOOKUP && op == 1 && cache_hit)
-            //µ±cacheÃüÖÐÇÒÎªÐ´²Ù×÷Ê±£¬ÐèÒªÖÃÔàÎ»
+            //ï¿½ï¿½cacheï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÎªÐ´ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½Î»
             begin
                 if(way0_hit == 1)
                     way0_d_reg[index] <= 1'b1;
@@ -297,10 +326,10 @@ always @(posedge clk)
                     way1_d_reg[index] <= 1'b1;
             end
         else if(curr_state == REFILL)
-            //µ±cacheÖØÌîÊ±£¬ÈôÎª¶Á²Ù×÷£¬Ôò½«ÔàÎ»ÖÃ0£¬ÈôÎªÐ´²Ù×÷ÔòÖÃ1
+            //ï¿½ï¿½cacheï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½0ï¿½ï¿½ï¿½ï¿½ÎªÐ´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½1
             begin
                 if(op == 0)
-                    //¶Á²Ù×÷£º½«ÔàÎ»ÖÃ0
+                    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½0
                     begin
                         if(buff_way == 0)
                             way0_d_reg[index] <= 1'b0;
@@ -308,7 +337,7 @@ always @(posedge clk)
                             way1_d_reg[index] <= 1'b0;
                     end
                 else
-                    //Ð´²Ù×÷£º½«ÔàÎ»ÖÃ1
+                    //Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½1
                     begin
                         if(buff_way == 0)
                             way0_d_reg[index] <= 1'b1;
@@ -322,14 +351,14 @@ wire way0_d;
 wire way1_d;
 
 wire replace_way;
-reg  random_way;               //Éè¼ÆËæ»úµÄÂ·
+reg  random_way;               //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â·
 always @(posedge clk) begin
     if(~resetn)
         random_way <= 1'b0;
     else if(next_state == LOOKUP)
         random_way <= ({$random()} % 2);
 end
-assign replace_way = random_way;      //Ê¹ÓÃËæ»úÌæ»»Ëã·¨
+assign replace_way = random_way;      //Ê¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½æ»»ï¿½ï¿??
 
 
 assign way0_d = way0_d_reg[index];
@@ -342,18 +371,18 @@ assign if_dirty = replace_way ? way1_d : way0_d;
 
 /*-----------------------------BLOCK RAM(data_bank)--------------------------------*/
 
-//¹²Á½Â·£¬Ã¿Â·4x32£¬¹²8¿ébank
-wire [3:0]  data_bank_we   [1:0][3:0];         //¿ªÆôÁË×Ö½ÚÐ´Ê¹ÄÜÖ®ºóweÎª4Î»
+//ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½Ã¿Â·4x32ï¿½ï¿½ï¿½ï¿½8ï¿½ï¿½bank
+wire [3:0]  data_bank_we   [1:0][3:0];         //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö½ï¿½Ð´Ê¹ï¿½ï¿½Ö®ï¿½ï¿½weÎª4Î»
 wire [7:0]  data_bank_addr [1:0][3:0];         //depth = 256 = 2 ^ 8
 wire [31:0] data_bank_wdata[1:0][3:0];
 wire [31:0] data_bank_rdata[1:0][3:0];
 
-//×îÖÕ¶Á³öµÄÊý¾Ý
+//ï¿½ï¿½ï¿½Õ¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 wire [127:0] cache_rdata;
 assign cache_rdata = (buff_way == 1'b0) ? {data_bank_rdata[0][3], data_bank_rdata[0][2], data_bank_rdata[0][1], data_bank_rdata[0][0]} :
                                          {data_bank_rdata[1][3], data_bank_rdata[1][2], data_bank_rdata[1][1], data_bank_rdata[1][0]};
 
-//ÔÚwb_curr_state¼´½«ÓÉWB_IDEL½øÈëWB_WRITEÊ±Ðè½«Ð´ÐÅÏ¢¼Ä´æ
+//ï¿½ï¿½wb_curr_stateï¿½ï¿½ï¿½ï¿½ï¿½ï¿½WB_IDELï¿½ï¿½ï¿½ï¿½WB_WRITEÊ±ï¿½è½«Ð´ï¿½ï¿½Ï¢ï¿½Ä´ï¿½
 wire if_write;
 assign if_write = (wb_curr_state == WB_WRITE);
 
@@ -421,17 +450,17 @@ endgenerate
 
 /*-------------------------------API with CPU and AXI------------------------------*/
 
-/*½ÓÊÕvalidÇëÇóÊ±ÏòCPUÀ­¸ßaddr_ok£¬×¢Òâ½ÓÊÕÇëÇó·ÖÁ½ÖÖÇé¿ö
-1£ºÓÉIDLE¼´½«½øÈëLOOKUP
-2£ºÓÉLOOKUP¼ÌÐø½ÓÊÕÇëÇóÈÓÁôÔÚLOOKUP
-ÕâÁ½ÖÖÇé¿öµÄnext_state¾ùÎªLOOKUP
+/*ï¿½ï¿½ï¿½ï¿½validï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½CPUï¿½ï¿½ï¿½ï¿½addr_okï¿½ï¿½×¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿??
+1ï¿½ï¿½ï¿½ï¿½IDLEï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½LOOKUP
+2ï¿½ï¿½ï¿½ï¿½LOOKUPï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½LOOKUP
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½next_stateï¿½ï¿½ÎªLOOKUP
 */
 assign addr_ok = (next_state == LOOKUP);
 
-/*×¼±¸ºÃ¶ÁµÄÊý¾Ý»òÐ´³É¹¦Ê±ÏòCPUÀ­¸ßdata_ok£¬·ÖÈýÖÖÇé¿ö
-1£ºÔÚLOOKUP×´Ì¬ÏÂÊÇÐ´²Ù×÷£¬´ËÊ±ÎÞÂÛÃüÖÐÓë·ñ¶¼¿ÉÒÔ·µ»Ødata_ok
-2£ºÔÚLOOKUP×´Ì¬ÏÂÊÇ¶Á²Ù×÷ÇÒÃüÖÐcache
-3£ºÔÚREFILL×´Ì¬ÏÂµÄ×îºóÒ»ÅÄ£¬¼´¶Á³öAXI·¢À´µÄ×îºóÒ»¸ö32Î»Êý¾ÝÊ±
+/*×¼ï¿½ï¿½ï¿½Ã¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý»ï¿½Ð´ï¿½É¹ï¿½Ê±ï¿½ï¿½CPUï¿½ï¿½ï¿½ï¿½data_okï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿??
+1ï¿½ï¿½ï¿½ï¿½LOOKUP×´Ì¬ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ñ¶¼¿ï¿½ï¿½Ô·ï¿½ï¿½ï¿½data_ok
+2ï¿½ï¿½ï¿½ï¿½LOOKUP×´Ì¬ï¿½ï¿½ï¿½Ç¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½cache
+3ï¿½ï¿½ï¿½ï¿½REFILL×´Ì¬ï¿½Âµï¿½ï¿½ï¿½ï¿½Ò»ï¿½Ä£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½AXIï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿??32Î»ï¿½ï¿½ï¿½ï¿½Ê±
 */
 reg refill_ok;
 always @(posedge clk)
@@ -456,7 +485,7 @@ end
 
 assign data_ok = ((curr_state == LOOKUP) && (cache_hit)) || (refill_ok) || ((curr_state == IDLE) && (buff_op == 1));
 
-//ÔÚREPLACE×´Ì¬ÏÂ·¢³ö¶ÁÇëÇó
+//ï¿½ï¿½REPLACE×´Ì¬ï¿½Â·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 assign rd_req  = curr_state == REPLACE;
 
 reg reg_wr_req;
@@ -547,12 +576,12 @@ always @(posedge clk)
             buff_way <= replace_way;
     end
 
-//²âÊÔ³ÌÐòÃ»ÓÐÓÃµ½
+//ï¿½ï¿½ï¿½Ô³ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½Ãµï¿½
 assign rd_type  = uncache ? 3'b010 : 3'b100;
 assign wr_type  = uncache ? 3'b010 : 3'b100;
 assign wr_wstrb = uncache ? buff_wstrb : 4'hf;
 
-//for ret cnt, ÓÃÓÚÒÀ´Î¶Á³öÒ»¸öcacheÐÐµÄÃ¿¸ö32Î»Êý¾Ý
+//for ret cnt, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î¶ï¿½ï¿½ï¿½Ò»ï¿½ï¿½cacheï¿½Ðµï¿½Ã¿ï¿½ï¿½32Î»ï¿½ï¿½ï¿½ï¿½
 reg [1:0] ret_cnt;
 always@(posedge clk)
 begin
@@ -570,6 +599,43 @@ wire hit_write = (curr_state == LOOKUP && wb_next_state == WB_WRITE) ||
                  (curr_state == REFILL && buff_op == 1 && ret_last && ret_valid);
 
 //uncache
+
+//exp23 cacop add
+wire cacop_init = cacop_icache && (cacop_code[4:3] == 0);
+wire cacop_cst = cacop_icache && ((cacop_code[4:3] == 2'b01) || (cacop_code[4:3] == 2'b10));
+
+wire cacop_init_way = cacop_addr[0];
+wire [7:0] cacop_init_index = cacop_addr[11:4];
+
+/*reg cacop_cst_reg;
+always @(posedge clk) begin
+    if(~resetn)
+        cacop_cst_reg <= 0;
+    else if (cacop_cst) begin
+        cacop_cst_reg <= 1;
+    end
+    else if (cacop_cst_reg && curr_state == REFILL && next_state == IDLE) begin
+        cacop_cst_reg <= 0;
+    end
+    else
+        cacop_cst_reg <= cacop_cst_reg;
+end*/
+
+/*reg [31:0] cacop_addr_reg;
+always @(posedge clk) begin
+    if(~resetn)
+        cacop_addr_reg <= 0;
+    else if (cacop_cst) begin
+        cacop_addr_reg <= cacop_addr;
+    end
+    else if (cacop_cst && curr_state == REFILL && next_state == IDLE) begin
+        cacop_addr_reg <= 0;
+    end
+    else
+        cacop_addr_reg <= cacop_addr_reg;
+end*/
+
+assign cacop_over = cacop_init || (curr_state == REFILL && cacop_cst) || (curr_state == LOOKUP && cacop_cst && ~cache_hit);
 
 
 endmodule

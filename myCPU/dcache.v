@@ -40,7 +40,13 @@ module dcache(
     output          axi_uncache,
     
     input           uncache_test,
-    input           uncache
+    input           uncache,
+
+    //exp23 add
+    input           cacop_dcache,
+    input  [31:0]   cacop_addr,
+    input  [4:0]    cacop_code,
+    output          cacop_over
 );
 
 /*-----------------------------------????-----------------------------------------*/
@@ -77,7 +83,9 @@ always @(*)
         case(curr_state)
             IDLE:
                 begin
-                    if(~valid)
+                    if(cacop_cst)
+                        next_state <= LOOKUP;                
+                    else if(~valid)
                         //如果cpu没有发来请求，停留在IDLE
                         next_state <= IDLE;
                     else
@@ -92,7 +100,20 @@ always @(*)
                 end
             LOOKUP:
             begin
-                if(tagv_addr_reg[0] != tagv_addr[0])
+                if (cacop_cst) begin
+                    if (cache_hit) begin
+                        if (if_dirty) begin
+                            next_state = DIRTY_WB;
+                        end
+                        else begin
+                            next_state = REFILL;
+                        end
+                    end
+                    else begin
+                        next_state = IDLE;
+                    end
+                end
+                else if(tagv_addr_reg[0] != tagv_addr[0])
                     next_state <= LOOKUP;
                 else if(cache_hit && ~buff_uncache)
                     begin
@@ -123,7 +144,15 @@ always @(*)
             end
             DIRTY_WB:
                 begin
-                    if(~wr_rdy)
+                    if (cacop_cst) begin
+                        if (~wr_rdy) begin
+                            next_state = DIRTY_WB;
+                        end
+                        else begin
+                            next_state = REFILL;
+                        end
+                    end
+                    else if(~wr_rdy)
                         //总线并没有准备好接受写请求，状态阻塞在DIRTY_WB
                         next_state <= DIRTY_WB;
                     else
@@ -147,7 +176,10 @@ always @(*)
                 end
             REFILL:
                 begin
-                    if(ret_valid && ret_last)
+                    if (cacop_cst) begin
+                        next_state = IDLE;
+                    end
+                    else if(ret_valid && ret_last)
                          next_state <= IDLE;
                     // if(ret_valid && ~ret_last)
                     //     //并未发来最后一个32位数据
@@ -177,7 +209,7 @@ always @(*)
         case(wb_curr_state)
             WB_IDLE:
                 begin
-                    if(((curr_state == LOOKUP) && (op == 1) && cache_hit) || (curr_state == REFILL && buff_op == 1 && ret_last && ret_valid))
+                    if(((curr_state == LOOKUP) && (buff_op == 1) && cache_hit) || (curr_state == REFILL && buff_op == 1 && ret_last && ret_valid))
                         //主状态机处于LOOKUP状态且发现Store操作命中Cache
                         wb_next_state <= WB_WRITE;
                     else
@@ -185,7 +217,7 @@ always @(*)
                 end
             WB_WRITE:
                 begin
-                    if((curr_state == LOOKUP) && (op == 1) && cache_hit)
+                    if((curr_state == LOOKUP) && (buff_op == 1) && cache_hit)
                         //主状态机发现新的Hit Write
                         wb_next_state <= WB_WRITE;
                     else
@@ -207,7 +239,7 @@ always @(posedge clk)
         if(~resetn)
             reg_tag <= 0;
         else if((curr_state == IDLE && valid && wb_curr_state != WB_WRITE) || (curr_state == LOOKUP && next_state == LOOKUP && tagv_addr[0] == tagv_addr_reg[0]))
-            reg_tag <= tag;
+            reg_tag <= cacop_cst ? cacop_addr[31:12] : tag;
         else begin
             reg_tag <= reg_tag;
         end
@@ -243,16 +275,25 @@ always @(posedge clk)
 
 assign way0_hit = way0_v && (way0_tag == reg_tag);
 assign way1_hit = way1_v && (way1_tag == reg_tag);
-assign cache_hit = (buff_index_reg == buff_index) && (way0_hit || way1_hit) && ~buff_uncache;
+assign cache_hit =  cacop_cst ? (way0_hit || way1_hit) :
+                    ((buff_index_reg == buff_index) && (way0_hit || way1_hit));
 
-assign tagv_we[0] = !buff_uncache && ((curr_state == REFILL) && (buff_way == 0));
-assign tagv_we[1] = !buff_uncache && ((curr_state == REFILL) && (buff_way == 1));
+assign tagv_we[0] = (!buff_uncache && ((curr_state == REFILL) && (buff_way == 0 || (cacop_cst && way0_hit)))) || (cacop_init && cacop_init_way == 0);
+assign tagv_we[1] = (!buff_uncache && ((curr_state == REFILL) && (buff_way == 1 || (cacop_cst && way1_hit)))) || (cacop_init && cacop_init_way == 1);
 
-assign tagv_addr[0] = buff_index;
-assign tagv_addr[1] = buff_index;
+assign tagv_addr[0] = cacop_init ? cacop_init_index : 
+                      cacop_cst ? cacop_addr[11:4] :
+                      buff_index;
+assign tagv_addr[1] = cacop_init ? cacop_init_index : 
+                      cacop_cst ? cacop_addr[11:4] :
+                      buff_index;
 
-assign tagv_wdata[0] = {1'b1, reg_tag};
-assign tagv_wdata[1] = {1'b1, reg_tag};
+assign tagv_wdata[0] = cacop_init ? 0 : 
+                       cacop_cst ? {1'b0,reg_tag} :
+                       {1'b1, reg_tag};;
+assign tagv_wdata[1] = cacop_init ? 0 : 
+                       cacop_cst ? {1'b0,reg_tag} :
+                       {1'b1, reg_tag};
 
 //共两路，每路4x(20 + 1)，共8块bank
 wire        tagv_we   [1:0];
@@ -357,7 +398,8 @@ assign way0_d = way0_d_reg[index];
 assign way1_d = way1_d_reg[index];
 
 wire if_dirty;
-assign if_dirty = replace_way ? way1_d : way0_d;
+assign if_dirty = cacop_cst ? (way0_hit ? way0_d : way1_hit ? way1_d : 1'b0) :
+                  replace_way ? way1_d : way0_d;
 
 /*---------------------------------------------------------------------------------*/
 
@@ -466,7 +508,7 @@ begin
 end
 
 
-assign data_ok = ((curr_state == LOOKUP) && (cache_hit)) || (refill_ok) || ((curr_state == IDLE) && (buff_op == 1));
+assign data_ok = ((curr_state == LOOKUP) && (cache_hit) && ~buff_uncache) || (refill_ok) || ((curr_state == IDLE) && (buff_op == 1));
 
 //在REPLACE状态下发出读请求
 assign rd_req  = curr_state == REPLACE;
@@ -579,7 +621,7 @@ always @(posedge clk)
 
 
 //测试程序没有用到
-assign rd_type  = uncache ? 3'b010 : 3'b100;
+assign rd_type  = buff_uncache ? 3'b010 : 3'b100;
 assign wr_type  = buff_uncache ? 3'b010 : 3'b100;
 assign wr_wstrb = buff_uncache ? buff_wstrb : 4'hf;
 
@@ -589,9 +631,9 @@ always@(posedge clk)
 begin
     if(~resetn)
         ret_cnt <= 2'b0;
-    else if(ret_valid && ret_last)
+    else if(ret_valid && ret_last && ~buff_uncache)
         ret_cnt <= 2'b0;
-    else if(ret_valid)
+    else if(ret_valid && ~buff_uncache)
         ret_cnt <= ret_cnt + 2'b1;
 end
 
@@ -601,6 +643,43 @@ wire hit_write = (curr_state == LOOKUP && wb_next_state == WB_WRITE) ||
                  (curr_state == REFILL && buff_op == 1 && ret_last && ret_valid);
 
 //uncache
+
+//exp23 cacop add
+wire cacop_init = cacop_dcache && (cacop_code[4:3] == 0);
+wire cacop_cst = cacop_dcache && ((cacop_code[4:3] == 2'b01) || (cacop_code[4:3] == 2'b10));
+
+wire cacop_init_way = cacop_addr[0];
+wire [7:0] cacop_init_index = cacop_addr[11:4];
+
+/*reg cacop_cst_reg;
+always @(posedge clk) begin
+    if(~resetn)
+        cacop_cst_reg <= 0;
+    else if (cacop_cst) begin
+        cacop_cst_reg <= 1;
+    end
+    else if (cacop_cst_reg && curr_state == REFILL && next_state == IDLE) begin
+        cacop_cst_reg <= 0;
+    end
+    else
+        cacop_cst_reg <= cacop_cst_reg;
+end*/
+
+/*reg [31:0] cacop_addr_reg;
+always @(posedge clk) begin
+    if(~resetn)
+        cacop_addr_reg <= 0;
+    else if (cacop_cst) begin
+        cacop_addr_reg <= cacop_addr;
+    end
+    else if (cacop_cst_reg && curr_state == REFILL && next_state == IDLE) begin
+        cacop_addr_reg <= 0;
+    end
+    else
+        cacop_addr_reg <= cacop_addr_reg;
+end*/
+
+assign cacop_over = cacop_init || (curr_state == REFILL && cacop_cst) || (curr_state == LOOKUP && cacop_cst && ~cache_hit);
 
 
 endmodule
