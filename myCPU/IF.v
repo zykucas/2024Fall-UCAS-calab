@@ -78,12 +78,24 @@ module stage1_IF(
 
 // pre_ifα��ˮ���Ĺ����ҷ���ȡָ����
 // ��IF����allowinΪ1ʱ�ٷ���req����Ϊ�˱�֤req��addr_ok����ʱallowinҲ�����ߵ�
-assign inst_sram_req =  (reset || br_stall || (if_inst_cacop && !cacop_over_dcache && !cacop_over_icache)) ? 1'b0 : 
-                        fs_allow_in ? ((next_pc == next_pc_reg) ? inst_sram_req_reg  : 1'b0)
-                        : 1'b0;
+assign inst_sram_req =  (reset || br_stall || (if_inst_cacop && !cacop_over_reg)) ? 1'b0 : 
+                        fs_allow_in ? inst_sram_req_reg  : 1'b0;
 
 wire if_inst_cacop;
 assign if_inst_cacop = (fetch_inst[31:22] == 10'b0000011000);
+
+reg cacop_over_reg;
+always @(posedge clk) begin
+    if (reset) begin
+        cacop_over_reg <= 0;
+    end
+    else if (cacop_over_dcache || cacop_over_icache) begin
+        cacop_over_reg <= 1;
+    end
+    else begin
+        cacop_over_reg <= 0;
+    end
+end
 
 reg inst_sram_req_reg;
 always @(posedge clk)
@@ -134,7 +146,7 @@ always @(posedge clk)
                 else
                     fs_valid <= pre_if_to_fs_valid;
             end
-        else if(br_taken_cancel || ds_inst_cacop || (fetch_pc==32'h1c010370 && next_pc_reg == 32'h1c000100))
+        else if(br_taken_cancel || ds_inst_cacop)
             fs_valid <= 1'b0;
     end
 
@@ -214,32 +226,24 @@ assign next_pc = if_keep_pc ? br_delay_reg :
                  (br_taken && ~br_stall) ? br_target : 
                  seq_pc;
 
-reg [31:0] next_pc_reg;
-always @(posedge clk) begin
-    if (reset) begin
-        next_pc_reg <= 32'h1BFFFFFC;
-    end
-    else begin
-        next_pc_reg <= next_pc;
-    end
-end
+
 
 wire [31:0] next_pc_dt;   //dt --> directly translate
-assign next_pc_dt = next_pc_reg;
+assign next_pc_dt = next_pc;
 
 wire [31:0] next_pc_dmw0; //DMW0
-assign next_pc_dmw0 = {DMW0_PSEG , next_pc_reg[28:0]};
+assign next_pc_dmw0 = {DMW0_PSEG , next_pc[28:0]};
 
 wire [31:0] next_pc_dmw1; //DMW1
-assign next_pc_dmw1 = {DMW1_PSEG , next_pc_reg[28:0]};
+assign next_pc_dmw1 = {DMW1_PSEG , next_pc[28:0]};
 
 wire [31:0] next_pc_ptt; //ppt --> page table translate
-assign next_pc_ptt = {s0_ppn, next_pc_reg[11:0]};
+assign next_pc_ptt = {s0_ppn, next_pc[11:0]};
 
 //s0_vppn
-assign s0_vppn = next_pc_reg[31:13];
+assign s0_vppn = next_pc[31:13];
 //s0_va_12bit
-assign s0_va_bit12 = next_pc_reg[12];
+assign s0_va_bit12 = next_pc[12];
 //s0_asid
 assign s0_asid = tlbasid_asid;
 
@@ -251,10 +255,10 @@ wire if_indt;
 assign if_indt = ~crmd_da & crmd_pg;   //da=0, pg=1 --> ӳ���ַ����ģ�?
 
 wire if_dmw0;
-assign if_dmw0 = ((plv == 0 && DMW0_PLV0) || (plv == 3 && DMW0_PLV3)) && (next_pc_reg[31:29] == DMW0_VSEG);
+assign if_dmw0 = ((plv == 0 && DMW0_PLV0) || (plv == 3 && DMW0_PLV3)) && (next_pc[31:29] == DMW0_VSEG);
                     
 wire if_dmw1;
-assign if_dmw1 = ((plv == 0 && DMW1_PLV0) || (plv == 3 && DMW1_PLV3)) && (next_pc_reg[31:29] == DMW1_VSEG);
+assign if_dmw1 = ((plv == 0 && DMW1_PLV0) || (plv == 3 && DMW1_PLV3)) && (next_pc[31:29] == DMW1_VSEG);
 
 wire if_ppt;
 assign if_ppt = if_indt && ~(if_dmw0 | if_dmw1);
@@ -265,7 +269,7 @@ assign next_pc_p = if_dt ? next_pc_dt : if_indt ?
 
 
 //inst_addr_vrtl
-assign inst_addr_vrtl = next_pc_reg;
+assign inst_addr_vrtl = next_pc;
 /*-----------------------------------------------------------------------*/
 
 /*
@@ -295,11 +299,24 @@ always @(posedge clk)
     begin
         if(reset)
             if_keep_pc <= 1'b0;
-        else if(inst_sram_addr_ok && ~deal_with_cancel && ~wb_ex && ~ertn_flush)
+        else if((inst_sram_addr_ok && ~deal_with_cancel && ~wb_ex && ~ertn_flush) || (keep_cancel && ~wb_ex && ~ertn_flush))
             if_keep_pc <= 1'b0;
-        else if((br_taken && ~br_stall) || wb_ex || ertn_flush)
+        else if(wb_ex || ertn_flush || (br_taken && ~br_stall))
             if_keep_pc <= 1'b1;
     end   
+
+reg keep_cancel;
+always @(posedge clk)
+    begin
+        if(reset)
+            keep_cancel <= 1'b0;
+        else if(wb_ex || ertn_flush)
+            keep_cancel <= 1'b0;
+        else if(inst_sram_addr_ok && br_taken)
+            keep_cancel <= 1'b1;
+        else if(inst_sram_data_ok)
+            keep_cancel <= 1'b0;
+    end
 
 always @(posedge clk)
     begin
@@ -320,7 +337,7 @@ always @(posedge clk)
         if(reset)
             fetch_pc <= 32'h1BFFFFFC;
         else if(pre_if_to_fs_valid && fs_allow_in)
-            fetch_pc <= next_pc_reg;
+            fetch_pc <= next_pc;
     end
 
 /*----------------------------Link to inst_ram---------------------*/
@@ -349,7 +366,7 @@ assign fetch_inst = inst_sram_rdata;
 //task13 add ADEF fetch_addr_exception
 wire fs_ex_ADEF;
 //fs_ex_ADEF happen when ~inst_sram_wr and last 2 bits of inst_sram_addr are not 2'b00
-assign fs_ex_ADEF = (if_ppt && next_pc_reg[31]) || (next_pc_p[1] | next_pc_p[0]);  //last two bit != 0 <==> error address
+assign fs_ex_ADEF = (if_ppt && next_pc[31]) || (next_pc_p[1] | next_pc_p[0]);  //last two bit != 0 <==> error address
 
 
 //assign fs_to_ds_bus = {fs_exc_ADEF,fetch_inst,fetch_pc};

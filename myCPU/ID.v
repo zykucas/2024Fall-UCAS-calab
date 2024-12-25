@@ -749,15 +749,48 @@ assign ds_ready_go = ~Need_Block;
 assign ds_allow_in = (!ds_valid || ds_ready_go && es_allow_in);
 assign ds_to_es_valid = ds_valid && ds_ready_go;
 
+/*reg br_taken_reg;
+always @(posedge clk) begin
+    if (reset) begin
+        br_taken_reg <= 1'b0;
+    end
+    else if(br_taken)begin
+        br_taken_reg <= 1'b1;
+    end
+    else if(br_taken_reg && fs_to_ds_valid && ds_allow_in)begin
+        br_taken_reg <= 1'b0;
+    end
+end*/
 
-assign br_taken_cancel = !fs_to_ds_valid ? 1'b0 : Need_Block ? 1'b0 : br_taken;
+wire wait_cancel ;
+assign wait_cancel = !ds_allow_in && fs_to_ds_valid;
+
+reg wait_cancel_reg;
+always @(posedge clk) begin
+    if (reset) begin
+        wait_cancel_reg <= 1'b0;
+    end
+    else
+        wait_cancel_reg <= wait_cancel;
+end
+
+reg need_wait_cancel_reg;
+always @(posedge clk) begin
+    if (reset) begin
+        need_wait_cancel_reg <= 1'b0;
+    end
+    else
+        need_wait_cancel_reg <= wait_cancel_reg;
+end
+
+assign br_taken_cancel = (!fs_to_ds_valid ? 1'b0 : Need_Block ? 1'b0 : br_taken) || (need_wait_cancel_reg && br_taken);
 
 always @(posedge clk)
     begin
         if(reset)
             ds_valid <= 1'b0;
-        else if(br_taken_cancel)
-            ds_valid <= 1'b0;
+        //else if(br_taken_cancel)
+          //  ds_valid <= 1'b0;
         else if(ds_allow_in)
             ds_valid <= fs_to_ds_valid;
     end
